@@ -15,3 +15,4 @@ The goal is to reduce the time and effort required write and maintain testcases.
 
 # Living Document
 The link for the project's living document:
+https://github.com/Jovewinston/ReplayQA/blob/main/living-document.md
