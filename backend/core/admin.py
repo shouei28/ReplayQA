@@ -7,6 +7,7 @@ from .models import User, Test, TestExecution, TestResult
 class UserAdmin(BaseUserAdmin):
     list_display = ('username', 'email', 'company', 'token_limit', 'tokens_used', 'is_staff')
     list_filter = ('is_staff', 'is_superuser', 'is_active')
+    filter_horizontal = ()  # Custom User has no groups/user_permissions
     fieldsets = BaseUserAdmin.fieldsets + (
         ('ReplayQA Settings', {
             'fields': ('company', 'token_limit', 'tokens_used', 'tokens_used_this_month',
