@@ -164,6 +164,9 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
+# Celery Beat Scheduler (for periodic tasks)
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
 # External Service API Keys (to be set in .env)
 BROWSERBASE_API_KEY = os.getenv('BROWSERBASE_API_KEY', '')
 BROWSERBASE_PROJECT_ID = os.getenv('BROWSERBASE_PROJECT_ID', '')
