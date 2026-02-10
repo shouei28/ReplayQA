@@ -3,7 +3,7 @@ Initial navigation is done by the recording thread when it connects (single CDP 
 import os
 import time
 
-from pipeline.services.browser_slot_manager import get_slot_manager
+from services.browser_slot_manager import get_slot_manager
 from . import state
 
 
