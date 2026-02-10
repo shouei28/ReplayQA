@@ -122,6 +122,38 @@ All endpoints are currently placeholder implementations. See `api/views/` direct
 - `GET /api/live-view/<test_execution_id>/` - Get live view URL
 - `GET /api/health` - Health check
 
+## Running Tests
+
+### Install Test Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### Run Tests
+```bash
+# Make sure you're in the backend directory and venv is activated
+cd backend
+source venv/bin/activate  # On macOS/Linux
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=. --cov-report=html
+
+# Run specific test file
+pytest tests/test_models.py
+
+# Run with verbose output
+pytest -v
+```
+
+**Note:** If you encounter plugin conflicts (e.g., with anaconda environment), make sure you're using the virtual environment's pytest:
+```bash
+# Use python -m pytest instead of pytest directly
+python -m pytest
+```
+
 ## Running Celery Workers and Beat
 
 ### Start Redis (if not already running)
