@@ -1,19 +1,12 @@
-"""Recording pipeline: Playwright connect, inject script, polling loop, keep-alive.
-Agent execution runs in this thread (single CDP connection) to avoid closing the session."""
+"""Recording pipeline: Playwright connect, inject script, polling loop, keep-alive."""
 import os
 import time
 import threading
 
 from playwright.sync_api import sync_playwright
 
-from pipeline.services.automation import Pilot
-from pipeline.services.automation.context import RunnerContext
-
 from . import state
 from .script import build_recorder_script
-
-RECORDER_AGENT_WIDTH = 1280
-RECORDER_AGENT_HEIGHT = 720
 
 
 def start_recording(
@@ -43,15 +36,11 @@ def start_recording(
                 "browser": None,
                 "page": None,
                 "recording_enabled": True,
-                "agent_executing": False,
                 "browserbase_session_id": browserbase_session_id,
                 "connect_url": connect_url,
                 "actions_queue": actions_queue,
                 "device": device,
                 "slot_browser": slot_browser,
-                "pending_agent_instruction": None,
-                "pending_agent_result": None,
-                "pending_agent_event": None,
             }
         try:
             with sync_playwright() as playwright:
@@ -89,7 +78,6 @@ def start_recording(
                     try:
                         page_ref = None
                         recording_enabled = False
-                        agent_executing = False
 
                         with state.recording_lock:
                             session_data = state.recording_sessions.get(session_id)
@@ -99,64 +87,9 @@ def start_recording(
                                 break
                             page_ref = session_data.get("page")
                             recording_enabled = session_data.get("recording_enabled", False)
-                            agent_executing = session_data.get("agent_executing", False)
 
-                        if agent_executing:
-                            time.sleep(0.1)
-                            continue
                         if not page_ref:
                             time.sleep(0.1)
-                            continue
-
-                        # Run agent in this thread (avoids second CDP connection that would close the session)
-                        pending_instruction = None
-                        pending_credentials = None
-                        pending_event = None
-                        with state.recording_lock:
-                            if session_id in state.recording_sessions:
-                                pending_instruction = state.recording_sessions[session_id].pop("pending_agent_instruction", None)
-                                pending_credentials = state.recording_sessions[session_id].pop("pending_agent_credentials", None)
-                                if pending_instruction is not None:
-                                    pending_event = state.recording_sessions[session_id].get("pending_agent_event")
-                                    state.recording_sessions[session_id]["agent_executing"] = True
-                        if pending_instruction is not None:
-                            # Force recording OFF in the page before running the agent, and clear any
-                            # queued actions, so the agent's actions are never captured.
-                            try:
-                                page_ref.evaluate("() => { window.__qualty_recording_enabled = false; window.__qualty_actions = []; }")
-                            except Exception:
-                                pass
-                            try:
-                                ctx = RunnerContext(
-                                    page=page_ref,
-                                    screen_width=RECORDER_AGENT_WIDTH,
-                                    screen_height=RECORDER_AGENT_HEIGHT,
-                                    credentials=pending_credentials,
-                                )
-                                result = Pilot().agent(ctx, pending_instruction, initial_url=None)
-                                with state.recording_lock:
-                                    if session_id in state.recording_sessions:
-                                        state.recording_sessions[session_id]["pending_agent_result"] = result.to_dict()
-                                        state.recording_sessions[session_id]["agent_executing"] = False
-                                        state.recording_sessions[session_id]["pending_agent_event"] = None
-                            except Exception as agent_err:
-                                with state.recording_lock:
-                                    if session_id in state.recording_sessions:
-                                        state.recording_sessions[session_id]["pending_agent_result"] = {
-                                            "success": False,
-                                            "message": str(agent_err)[:500],
-                                            "error": str(agent_err)[:500],
-                                        }
-                                        state.recording_sessions[session_id]["agent_executing"] = False
-                                        state.recording_sessions[session_id]["pending_agent_event"] = None
-                            # Clear page action buffer again so any debounced callbacks that fired during
-                            # the agent run are never polled into the queue.
-                            try:
-                                page_ref.evaluate("() => { window.__qualty_actions = []; }")
-                            except Exception:
-                                pass
-                            if pending_event:
-                                pending_event.set()
                             continue
 
                         current_time = time.time()
