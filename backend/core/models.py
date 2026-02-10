@@ -90,9 +90,9 @@ class TestExecution(models.Model):
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # Link to saved Test; Django creates test_id column automatically for this FK
     test = models.ForeignKey(Test, on_delete=models.SET_NULL, null=True, blank=True, related_name='executions')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='test_executions')
-    test_id = models.UUIDField(null=True, blank=True)  # Reference to job if exists
     test_name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     url = models.URLField()
