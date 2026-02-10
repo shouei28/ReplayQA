@@ -122,10 +122,42 @@ All endpoints are currently placeholder implementations. See `api/views/` direct
 - `GET /api/live-view/<test_execution_id>/` - Get live view URL
 - `GET /api/health` - Health check
 
+## Running Celery Workers and Beat
+
+### Start Redis (if not already running)
+```bash
+redis-server
+```
+
+### Start Celery Worker
+In a separate terminal:
+```bash
+celery -A replayqa worker --loglevel=info
+```
+
+### Start Celery Beat (for periodic tasks)
+In another separate terminal:
+```bash
+celery -A replayqa beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+```
+
+### Or run both together (development only)
+```bash
+celery -A replayqa worker --beat --scheduler django --loglevel=info
+```
+
+### Create a Test Periodic Task
+After running migrations, create a test periodic task:
+```bash
+python manage.py create_test_periodic_task
+```
+
+This will create a task that runs every 30 seconds and prints "Test: Celery task executed successfully!"
+
 ## Next Steps
 
 1. Implement authentication (JWT tokens)
 2. Implement business logic in each endpoint
-3. Set up Celery workers for background tasks
-4. Integrate with Browserbase, Stagehand, and Gemini APIs
-5. Implement blob storage integration with Supabase
+3. Integrate with Browserbase, Stagehand, and Gemini APIs
+4. Implement blob storage integration with Supabase
+5. Replace mock tasks with actual test execution logic
