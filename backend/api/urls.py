@@ -17,6 +17,14 @@ from .views import (
     admin_management,
     get_live_view,
 )
+from .views.recorder import (
+    RecorderStartView,
+    RecorderLiveViewView,
+    RecorderEndView,
+    RecorderStartRecordingView,
+    RecorderToggleRecordingView,
+    RecorderGetRecordedActionsView,
+)
 
 urlpatterns = [
     # Health check
@@ -47,4 +55,12 @@ urlpatterns = [
     
     # Live View
     path('live-view/<uuid:test_execution_id>/', get_live_view, name='live-view'),
+
+    # Recorder endpoints (simple recorder, no agent execution)
+    path('recorder/start', RecorderStartView.as_view(), name='recorder-start'),
+    path('recorder/<str:session_id>/live-view', RecorderLiveViewView.as_view(), name='recorder-live-view'),
+    path('recorder/<str:session_id>/start-recording', RecorderStartRecordingView.as_view(), name='recorder-start-recording'),
+    path('recorder/<str:session_id>/toggle-recording', RecorderToggleRecordingView.as_view(), name='recorder-toggle-recording'),
+    path('recorder/<str:session_id>/recorded-actions', RecorderGetRecordedActionsView.as_view(), name='recorder-recorded-actions'),
+    path('recorder/<str:session_id>/end', RecorderEndView.as_view(), name='recorder-end'),
 ]

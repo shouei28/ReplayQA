@@ -18,6 +18,12 @@ python-dotenv>=1.0.0
 # HTTP client for external APIs
 requests>=2.31.0
 
+# Browserbase (browser sessions for recorder; official SDK)
+browserbase>=1.4.0
+
+# Playwright (recorder connects to Browserbase via CDP)
+playwright>=1.40.0
+
 # Date/time utilities
 python-dateutil>=2.8.2
 
