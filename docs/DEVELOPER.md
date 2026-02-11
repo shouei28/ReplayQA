@@ -368,31 +368,103 @@ python manage.py seed_data
 
 ## Testing
 
-**Run tests:**
+## Running Tests Locally
+
+### Backend Tests (Pytest)
+
 ```bash
+cd backend
+
+# Install pytest
+pip install pytest pytest-django pytest-cov
+
 # Run all tests
 pytest
 
-# Run specific test file
-pytest backend/tests/test_runner_service.py
-
 # Run with coverage
-pytest --cov=core --cov-report=html
+pytest --cov=core --cov=api
 
-# Run only fast tests (exclude integration)
-pytest -m "not integration"
+# Run specific file
+pytest tests/test_models.py
+
+# Run specific test
+pytest tests/test_models.py::test_create_user
 ```
 
-**Run tests:**
+### Frontend Tests (Jest)
+
 ```bash
+cd frontend
+
 # Run all tests
 npm test
 
 # Run with coverage
 npm test -- --coverage
 
-# Run specific test file
-npm test MyComponent.test.tsx
+# Run specific file
+npm test FileName.test.tsx
+
+# Watch mode (re-run on file changes)
+npm test -- --watch
+```
+
+## CI/CD with GitHub Actions
+
+**On every push and pull request:**
+- Backend tests (pytest)
+- Frontend linting (eslint)
+- Frontend tests (jest)
+- Code coverage (80%)
+
+### Setup Instructions
+
+1. Ensure `.github/workflows/tests.yml` is setup in your repository
+2. Push changes to GitHub
+3. Tests run automatically on every push
+
+View results in GitHub Actions tab.
+
+## Adding New Tests
+
+### Backend Test
+
+1. Create file in `backend/tests/` with `test_` prefix
+2. Write test function with `test_` prefix
+3. Use `@pytest.mark.django_db` for database tests
+4. Run with `pytest`
+
+Example:
+```python
+import pytest
+from core.models import User
+
+@pytest.mark.django_db
+def test_my_feature():
+    user = User.objects.create_user(
+        username='test',
+        email='test@example.com',
+        password='pass'
+    )
+    assert user.username == 'test'
+```
+
+### Frontend Test
+
+1. Create file in `frontend/src/` ending with `.test.tsx`
+2. Import render and screen from testing-library
+3. Write test with `test()` function
+4. Run with `npm test`
+
+Example:
+```typescript
+import { render, screen } from '@testing-library/react';
+import MyComponent from './MyComponent';
+
+test('renders component', () => {
+  render(<MyComponent />);
+  expect(screen.getByText('Hello')).toBeInTheDocument();
+});
 ```
 
 ## Code Style Guidelines
