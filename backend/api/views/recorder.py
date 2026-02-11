@@ -1,12 +1,15 @@
 """
 Recorder API views. Business logic lives in services.recorder.
+Saving a test uses core.models.Test (single test table).
 """
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
+from rest_framework.permissions import AllowAny, IsAuthenticated
 
+from core.models import Test
 from services.recorder import (
     start_session,
     end_session,
@@ -14,6 +17,7 @@ from services.recorder import (
     start_recording,
     get_recorded_actions,
     toggle_recording,
+    summarize_steps,
 )
 from services.recorder import state
 
@@ -28,6 +32,7 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
 class RecorderStartView(APIView):
     """Start a recorder session with Browserbase."""
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [AllowAny]
 
     def post(self, request):
         try:
@@ -53,6 +58,7 @@ class RecorderStartView(APIView):
 class RecorderLiveViewView(APIView):
     """Get live view URL for recorder session."""
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [AllowAny]
 
     def get(self, request, session_id: str):
         try:
@@ -77,6 +83,7 @@ class RecorderLiveViewView(APIView):
 class RecorderStartRecordingView(APIView):
     """Start recording user interactions in the browser."""
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [AllowAny]
 
     def post(self, request, session_id: str):
         try:
@@ -112,6 +119,7 @@ class RecorderStartRecordingView(APIView):
 class RecorderToggleRecordingView(APIView):
     """Toggle recording on/off."""
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [AllowAny]
 
     def post(self, request, session_id: str):
         try:
@@ -136,6 +144,7 @@ class RecorderToggleRecordingView(APIView):
 class RecorderGetRecordedActionsView(APIView):
     """Get recorded actions from the queue."""
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [AllowAny]
 
     def get(self, request, session_id: str):
         try:
@@ -154,6 +163,7 @@ class RecorderGetRecordedActionsView(APIView):
 class RecorderEndView(APIView):
     """End a recorder session."""
     authentication_classes = [CsrfExemptSessionAuthentication]
+    permission_classes = [AllowAny]
 
     def post(self, request, session_id: str):
         try:
@@ -179,16 +189,15 @@ class RecorderEndView(APIView):
 
 class RecorderSaveTestView(APIView):
     """
-    Save a recorder test: summarise steps (Gemini) for description, then create Job.
-    Summarization is an internal step of the save process.
+    Save a recorded test into core.Test (single test table).
+    Uses summarize_steps (Gemini) for description; steps stored as JSON.
     """
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        workspace_user = getattr(request.user, "workspace_profile", None)
-        if not workspace_user:
-            return Response({"detail": "WorkspaceUser not found"}, status=404)
+        if not request.user or not request.user.is_authenticated:
+            return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
 
         data = request.data
         name = (data.get("name") or "").strip()
@@ -215,67 +224,26 @@ class RecorderSaveTestView(APIView):
             url=url,
             expected_behavior=expected_behavior,
         )
-        steps_text = steps_to_text(stagehand_steps)
 
-        devices = data.get("devices", ["desktop"])
-        browsers = data.get("browsers", ["chrome"])
-
-        # Optional credentials (for login steps); encode for storage
-        username_encrypted = None
-        password_encrypted = None
-        if data.get("username"):
-            raw = data["username"]
-            if isinstance(raw, str):
-                username_encrypted = base64.b64encode(raw.encode("utf-8")).decode("utf-8")
-            else:
-                username_encrypted = raw
-        if data.get("password"):
-            raw = data["password"]
-            if isinstance(raw, str):
-                password_encrypted = base64.b64encode(raw.encode("utf-8")).decode("utf-8")
-            else:
-                password_encrypted = raw
-
-        project = None
-        project_id = data.get("project_id")
-        if project_id is not None:
-            try:
-                project = Project.objects.get(id=project_id, user=workspace_user)
-            except Project.DoesNotExist:
-                pass
-
-        job = Job.objects.create(
-            user=workspace_user,
-            name=name,
+        test = Test.objects.create(
+            user=request.user,
+            test_name=name,
             description=description or name,
             url=url,
-            task=name,
-            steps=steps_text,
+            steps=stagehand_steps,
             expected_behavior=expected_behavior,
-            devices=devices,
-            browsers=browsers,
-            stagehand_steps=stagehand_steps,
-            project=project,
-            username=username_encrypted,
-            password=password_encrypted,
         )
 
         return Response(
             {
-                "id": str(job.id),
-                "name": job.name,
-                "description": job.description,
-                "url": job.url,
-                "task": job.task,
-                "steps": job.steps,
-                "expected_behavior": job.expected_behavior,
-                "devices": job.devices,
-                "browsers": job.browsers,
-                "stagehand_steps": job.stagehand_steps or [],
-                "username": job.username,
-                "password": job.password,
-                "created_at": job.created_at.isoformat(),
-                "updated_at": job.updated_at.isoformat(),
+                "id": str(test.id),
+                "test_name": test.test_name,
+                "description": test.description,
+                "url": test.url,
+                "steps": test.steps,
+                "expected_behavior": test.expected_behavior,
+                "created_at": test.created_at.isoformat(),
+                "updated_at": test.updated_at.isoformat(),
             },
             status=status.HTTP_201_CREATED,
         )

@@ -40,7 +40,7 @@ python manage.py migrate
 python manage.py createsuperuser
 
 # Frontend setup
-cd ../FrontEnd
+cd ../frontend
 npm install
 
 # Start development servers
@@ -48,8 +48,8 @@ npm install
 cd backend
 python manage.py runserver
 
-# Terminal 2 - Frontend (Next.js)
-cd FrontEnd
+# Terminal 2 - Frontend
+cd frontend
 npm run dev
 
 # Terminal 3 - Celery worker
@@ -90,7 +90,7 @@ replayqa/
 │   │   └── celery.py            # Celery configuration
 │   ├── manage.py                # Django management script
 │   └── requirements.txt         # Python dependencies
-├── FrontEnd/                    # Next.js App Router (React + TypeScript)
+├── frontend/                    # Next.js App Router (React + TypeScript)
 │   ├── app/                     # App Router pages and layouts
 │   │   ├── layout.tsx           # Root layout
 │   │   ├── page.tsx             # Home page
@@ -198,12 +198,12 @@ python manage.py runserver
 
 **Install dependencies:**
 ```bash
-cd FrontEnd
+cd frontend
 npm install
 ```
 
 **Configure environment variables:**
-Create `.env.local` in `FrontEnd/` (optional; defaults point to local backend):
+Create `.env` file in `frontend/`:
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ```
@@ -421,7 +421,7 @@ pytest -m "not integration"
 
 **Frontend (Next.js):**
 ```bash
-cd FrontEnd
+cd frontend
 
 # Lint
 npm run lint
