@@ -3,23 +3,23 @@ Recorder API views. Business logic lives in services.recorder.
 Saving a test uses core.models.Test (single test table).
 """
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from core.models import Test
 from services.recorder import (
-    start_session,
     end_session,
     get_live_view_url,
-    start_recording,
     get_recorded_actions,
-    toggle_recording,
+    start_recording,
+    start_session,
+    state,
     summarize_steps,
+    toggle_recording,
 )
-from services.recorder import state
 
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
@@ -31,6 +31,7 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
 
 class RecorderStartView(APIView):
     """Start a recorder session with Browserbase."""
+
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
@@ -38,15 +39,20 @@ class RecorderStartView(APIView):
         try:
             url = request.data.get("url")
             if not url:
-                return Response({"error": "URL is required"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "URL is required"}, status=status.HTTP_400_BAD_REQUEST
+                )
             device = request.data.get("device", "desktop")
             browser = request.data.get("browser", "chrome")
             data = start_session(url=url, device=device, browser=browser)
             return Response(data)
         except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
         except (RuntimeError, Exception) as e:
             import traceback
+
             print(f"[RECORDER ERROR] Failed to start recorder session: {e}")
             print(traceback.format_exc())
             return Response(
@@ -57,6 +63,7 @@ class RecorderStartView(APIView):
 
 class RecorderLiveViewView(APIView):
     """Get live view URL for recorder session."""
+
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
@@ -72,6 +79,7 @@ class RecorderLiveViewView(APIView):
             return Response({"live_view_url": live_view_url})
         except Exception as e:
             import traceback
+
             print(f"[RECORDER ERROR] Failed to get live view URL: {e}")
             print(traceback.format_exc())
             return Response(
@@ -82,6 +90,7 @@ class RecorderLiveViewView(APIView):
 
 class RecorderStartRecordingView(APIView):
     """Start recording user interactions in the browser."""
+
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
@@ -108,6 +117,7 @@ class RecorderStartRecordingView(APIView):
             return Response({"success": True, "message": "Recording started"})
         except Exception as e:
             import traceback
+
             print(f"[RECORDER ERROR] Failed to start recording: {e}")
             print(traceback.format_exc())
             return Response(
@@ -118,6 +128,7 @@ class RecorderStartRecordingView(APIView):
 
 class RecorderToggleRecordingView(APIView):
     """Toggle recording on/off."""
+
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
@@ -133,6 +144,7 @@ class RecorderToggleRecordingView(APIView):
             return Response(result)
         except Exception as e:
             import traceback
+
             print(f"[RECORDER ERROR] Failed to toggle recording: {e}")
             print(traceback.format_exc())
             return Response(
@@ -143,6 +155,7 @@ class RecorderToggleRecordingView(APIView):
 
 class RecorderGetRecordedActionsView(APIView):
     """Get recorded actions from the queue."""
+
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
@@ -152,6 +165,7 @@ class RecorderGetRecordedActionsView(APIView):
             return Response(result)
         except Exception as e:
             import traceback
+
             print(f"[RECORDER ERROR] Failed to get recorded actions: {e}")
             print(traceback.format_exc())
             return Response(
@@ -162,6 +176,7 @@ class RecorderGetRecordedActionsView(APIView):
 
 class RecorderEndView(APIView):
     """End a recorder session."""
+
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
@@ -179,6 +194,7 @@ class RecorderEndView(APIView):
             return Response({"success": True, "message": "Session ended successfully"})
         except Exception as e:
             import traceback
+
             print(f"[RECORDER ERROR] Failed to end session: {e}")
             print(traceback.format_exc())
             return Response(
@@ -192,12 +208,16 @@ class RecorderSaveTestView(APIView):
     Save a recorded test into core.Test (single test table).
     Uses summarize_steps (Gemini) for description; steps stored as JSON.
     """
+
     authentication_classes = [CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         if not request.user or not request.user.is_authenticated:
-            return Response({"detail": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED)
+            return Response(
+                {"detail": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
 
         data = request.data
         name = (data.get("name") or "").strip()
@@ -208,11 +228,18 @@ class RecorderSaveTestView(APIView):
             stagehand_steps = []
 
         if not name:
-            return Response({"error": "name is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "name is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
         if not expected_behavior:
-            return Response({"error": "expected_behavior is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "expected_behavior is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if not url:
-            return Response({"error": "url is required"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "url is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
         if len(stagehand_steps) < 1:
             return Response(
                 {"error": "At least one step is required"},
@@ -247,4 +274,3 @@ class RecorderSaveTestView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
-

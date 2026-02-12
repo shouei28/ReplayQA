@@ -1,4 +1,5 @@
 """Shared state for recorder: in-memory session store and slot release on cleanup."""
+
 import threading
 from typing import Any, Dict
 
@@ -20,7 +21,9 @@ def release_slot_and_remove_session(session_id: str) -> None:
         del recording_sessions[session_id]
     try:
         get_slot_manager().release_slot(device, slot_browser)
-        print(f"[RECORDER] Released slot for session {session_id} (device={device}, browser={slot_browser})")
+        print(
+            f"[RECORDER] Released slot for session {session_id} (device={device}, browser={slot_browser})"
+        )
     except Exception as ex:
         print(f"[RECORDER] Failed to release slot after cleanup: {ex}")
 
@@ -29,7 +32,12 @@ def get_recorded_actions(session_id: str) -> dict:
     """Return queued actions and clear queue. Includes session_closed=True if session not found."""
     with recording_lock:
         if session_id not in recording_sessions:
-            return {"success": True, "actions": [], "recording": False, "session_closed": True}
+            return {
+                "success": True,
+                "actions": [],
+                "recording": False,
+                "session_closed": True,
+            }
         session_data = recording_sessions[session_id]
         actions = session_data.get("actions_queue", [])
         session_data["actions_queue"] = []

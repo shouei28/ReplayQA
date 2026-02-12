@@ -1,7 +1,8 @@
 """Recording pipeline: Playwright connect, inject script, polling loop, keep-alive."""
+
 import os
-import time
 import threading
+import time
 
 from playwright.sync_api import sync_playwright
 
@@ -22,7 +23,9 @@ def start_recording(
     initial_url, injects the capture script, and runs the polling loop.
     """
     if not connect_url:
-        connect_url = f"wss://connect.browserbase.com/v1/sessions/{browserbase_session_id}"
+        connect_url = (
+            f"wss://connect.browserbase.com/v1/sessions/{browserbase_session_id}"
+        )
 
     def _thread():
         page = None
@@ -61,15 +64,19 @@ def start_recording(
 
                 with state.recording_lock:
                     if session_id in state.recording_sessions:
-                        state.recording_sessions[session_id].update({
-                            "playwright": playwright,
-                            "browser": browser,
-                            "page": page,
-                        })
+                        state.recording_sessions[session_id].update(
+                            {
+                                "playwright": playwright,
+                                "browser": browser,
+                                "page": page,
+                            }
+                        )
 
                 last_poll_time = time.time()
                 last_keepalive_time = time.time()
-                keepalive_interval = 60  # seconds; ping Browserbase to avoid idle disconnect
+                keepalive_interval = (
+                    60  # seconds; ping Browserbase to avoid idle disconnect
+                )
                 session_active = True
                 consecutive_errors = 0
                 max_consecutive_errors = 10
@@ -83,10 +90,14 @@ def start_recording(
                             session_data = state.recording_sessions.get(session_id)
                             if not session_data:
                                 session_active = False
-                                print(f"[RECORDER] Session {session_id} deleted, exiting polling loop")
+                                print(
+                                    f"[RECORDER] Session {session_id} deleted, exiting polling loop"
+                                )
                                 break
                             page_ref = session_data.get("page")
-                            recording_enabled = session_data.get("recording_enabled", False)
+                            recording_enabled = session_data.get(
+                                "recording_enabled", False
+                            )
 
                         if not page_ref:
                             time.sleep(0.1)
@@ -95,53 +106,92 @@ def start_recording(
                         current_time = time.time()
                         if current_time - last_keepalive_time >= keepalive_interval:
                             try:
-                                browserbase_api_key = os.environ.get("BROWSERBASE_API_KEY")
+                                browserbase_api_key = os.environ.get(
+                                    "BROWSERBASE_API_KEY"
+                                )
                                 if browserbase_api_key and browserbase_session_id:
                                     from browserbase import Browserbase
+
                                     bb = Browserbase(api_key=browserbase_api_key)
-                                    session_info = bb.sessions.retrieve(browserbase_session_id)
+                                    session_info = bb.sessions.retrieve(
+                                        browserbase_session_id
+                                    )
                                     if session_info:
                                         last_keepalive_time = current_time
-                                        print(f"[RECORDER] Keep-alive ping for Browserbase session {browserbase_session_id}")
+                                        print(
+                                            f"[RECORDER] Keep-alive ping for Browserbase session {browserbase_session_id}"
+                                        )
                                     else:
-                                        print(f"[RECORDER] Browserbase session {browserbase_session_id} not found; releasing slot and exiting")
-                                        state.release_slot_and_remove_session(session_id)
+                                        print(
+                                            f"[RECORDER] Browserbase session {browserbase_session_id} not found; releasing slot and exiting"
+                                        )
+                                        state.release_slot_and_remove_session(
+                                            session_id
+                                        )
                                         session_active = False
                                         break
                             except Exception as keepalive_error:
                                 err_str = str(keepalive_error).lower()
-                                if "not found" in err_str or "404" in err_str or "session" in err_str:
-                                    print(f"[RECORDER] Browserbase session gone (keep-alive error): {keepalive_error}; releasing slot")
+                                if (
+                                    "not found" in err_str
+                                    or "404" in err_str
+                                    or "session" in err_str
+                                ):
+                                    print(
+                                        f"[RECORDER] Browserbase session gone (keep-alive error): {keepalive_error}; releasing slot"
+                                    )
                                     state.release_slot_and_remove_session(session_id)
                                     session_active = False
                                     break
-                                print(f"[RECORDER] Keep-alive ping failed: {keepalive_error}")
+                                print(
+                                    f"[RECORDER] Keep-alive ping failed: {keepalive_error}"
+                                )
 
                         try:
                             # Update recording enabled flag; add_init_script handles persistence across navigations.
-                            page_ref.evaluate(f"() => {{ window.__qualty_recording_enabled = {str(recording_enabled).lower()}; }}")
+                            page_ref.evaluate(
+                                f"() => {{ window.__qualty_recording_enabled = {str(recording_enabled).lower()}; }}"
+                            )
                             consecutive_errors = 0
 
                             if current_time - last_poll_time >= 0.5:
                                 if recording_enabled:
                                     try:
-                                        actions = page_ref.evaluate("() => window.__qualty_actions || []")
+                                        actions = page_ref.evaluate(
+                                            "() => window.__qualty_actions || []"
+                                        )
                                         if actions:
-                                            page_ref.evaluate("() => { window.__qualty_actions = []; }")
+                                            page_ref.evaluate(
+                                                "() => { window.__qualty_actions = []; }"
+                                            )
                                             with state.recording_lock:
-                                                if session_id in state.recording_sessions:
-                                                    state.recording_sessions[session_id]["actions_queue"].extend(actions)
+                                                if (
+                                                    session_id
+                                                    in state.recording_sessions
+                                                ):
+                                                    state.recording_sessions[
+                                                        session_id
+                                                    ]["actions_queue"].extend(actions)
                                     except Exception as poll_error:
                                         consecutive_errors += 1
                                         with state.recording_lock:
-                                            if session_id not in state.recording_sessions:
+                                            if (
+                                                session_id
+                                                not in state.recording_sessions
+                                            ):
                                                 session_active = False
                                                 break
                                         if consecutive_errors <= 3:
-                                            print(f"[RECORDER] Error polling actions: {poll_error}")
+                                            print(
+                                                f"[RECORDER] Error polling actions: {poll_error}"
+                                            )
                                         if consecutive_errors >= max_consecutive_errors:
-                                            print(f"[RECORDER] Too many consecutive polling errors, exiting loop and cleaning up session")
-                                            state.release_slot_and_remove_session(session_id)
+                                            print(
+                                                f"[RECORDER] Too many consecutive polling errors, exiting loop and cleaning up session"
+                                            )
+                                            state.release_slot_and_remove_session(
+                                                session_id
+                                            )
                                             session_active = False
                                             break
                                 last_poll_time = current_time
@@ -153,9 +203,13 @@ def start_recording(
                                     session_active = False
                                     break
                             if consecutive_errors <= 3:
-                                print(f"[RECORDER] Warning: Page evaluate failed (session still exists): {page_error}")
+                                print(
+                                    f"[RECORDER] Warning: Page evaluate failed (session still exists): {page_error}"
+                                )
                             if consecutive_errors >= max_consecutive_errors:
-                                print(f"[RECORDER] Too many consecutive page errors, exiting loop and cleaning up session")
+                                print(
+                                    f"[RECORDER] Too many consecutive page errors, exiting loop and cleaning up session"
+                                )
                                 state.release_slot_and_remove_session(session_id)
                                 session_active = False
                                 break
@@ -165,13 +219,17 @@ def start_recording(
 
                     except Exception as e:
                         consecutive_errors += 1
-                        print(f"[RECORDER] Unexpected error in polling loop ({consecutive_errors}/{max_consecutive_errors}): {e}")
+                        print(
+                            f"[RECORDER] Unexpected error in polling loop ({consecutive_errors}/{max_consecutive_errors}): {e}"
+                        )
                         with state.recording_lock:
                             if session_id not in state.recording_sessions:
                                 session_active = False
                                 break
                         if consecutive_errors >= max_consecutive_errors:
-                            print(f"[RECORDER] Too many consecutive errors, exiting polling loop and cleaning up session")
+                            print(
+                                f"[RECORDER] Too many consecutive errors, exiting polling loop and cleaning up session"
+                            )
                             state.release_slot_and_remove_session(session_id)
                             session_active = False
                             break
@@ -183,6 +241,7 @@ def start_recording(
         except Exception as e:
             print(f"[RECORDER] Recording thread error: {e}")
             import traceback
+
             traceback.print_exc()
             state.release_slot_and_remove_session(session_id)
             try:

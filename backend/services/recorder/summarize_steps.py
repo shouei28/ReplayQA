@@ -1,4 +1,5 @@
 """Summarize recorder steps into a short description using Gemini Flash."""
+
 import json
 import os
 from typing import Any, List, Optional
@@ -25,6 +26,7 @@ def summarize_steps(
     model = model_name or os.environ.get("GEMINI_SUMMARIZE_MODEL", "gemini-2.0-flash")
     try:
         from google import genai
+
         client = genai.Client(api_key=api_key)
 
         steps_json = json.dumps(steps, indent=2) if steps else "[]"
@@ -46,7 +48,12 @@ def summarize_steps(
         prompt += "Steps (JSON):\n" + steps_json
 
         resp = client.models.generate_content(model=model, contents=prompt)
-        if resp and resp.candidates and resp.candidates[0].content and resp.candidates[0].content.parts:
+        if (
+            resp
+            and resp.candidates
+            and resp.candidates[0].content
+            and resp.candidates[0].content.parts
+        ):
             text = (resp.candidates[0].content.parts[0].text or "").strip()
             return text if text else fallback
         return fallback
