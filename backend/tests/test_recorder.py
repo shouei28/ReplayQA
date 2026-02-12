@@ -1,6 +1,7 @@
 """
 Tests for recorder API views.
 """
+
 import pytest
 from unittest.mock import patch, MagicMock
 from rest_framework.test import APIClient
@@ -56,7 +57,10 @@ class TestRecorderLiveViewView:
 
     def test_live_view_with_param_success(self):
         """With browserbase_session_id, returns live_view_url (mocked)."""
-        with patch("api.views.recorder.get_live_view_url", return_value="https://live.example.com"):
+        with patch(
+            "api.views.recorder.get_live_view_url",
+            return_value="https://live.example.com",
+        ):
             client = APIClient()
             response = client.get(
                 "/api/recorder/session-123/live-view",
@@ -163,7 +167,9 @@ class TestRecorderSaveTestView:
 
     def test_save_test_missing_name_returns_400(self):
         """Missing name returns 400."""
-        user = User.objects.create_user(username="testuser", email="test@example.com", password="pass")
+        user = User.objects.create_user(
+            username="testuser", email="test@example.com", password="pass"
+        )
         with patch("api.views.recorder.summarize_steps", return_value="summary"):
             client = APIClient()
             client.force_authenticate(user=user)
@@ -181,7 +187,9 @@ class TestRecorderSaveTestView:
 
     def test_save_test_success(self):
         """Authenticated user with valid data creates test."""
-        user = User.objects.create_user(username="testuser", email="test@example.com", password="pass")
+        user = User.objects.create_user(
+            username="testuser", email="test@example.com", password="pass"
+        )
         with patch("api.views.recorder.summarize_steps", return_value="summary"):
             client = APIClient()
             client.force_authenticate(user=user)

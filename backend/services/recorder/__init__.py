@@ -2,6 +2,7 @@
 Recorder service layer: session lifecycle, recording thread, get actions, toggle recording.
 Views in api.views.recorder call these; business logic lives here.
 """
+
 from .summarize_steps import summarize_steps
 from .state import (
     recording_sessions,

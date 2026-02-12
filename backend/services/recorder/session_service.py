@@ -1,5 +1,7 @@
 """Recorder session lifecycle: Browserbase session, end, live view URL.
-Initial navigation is done by the recording thread when it connects (single CDP connection)."""
+Initial navigation is done by the recording thread when it connects (single CDP connection).
+"""
+
 import os
 import time
 
@@ -18,7 +20,9 @@ def start_session(url: str, device: str = "desktop", browser: str = "chrome") ->
     browserbase_project_id = os.environ.get("BROWSERBASE_PROJECT_ID")
 
     if not browserbase_api_key or not browserbase_project_id:
-        raise ValueError("Missing required environment variables (BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID)")
+        raise ValueError(
+            "Missing required environment variables (BROWSERBASE_API_KEY, BROWSERBASE_PROJECT_ID)"
+        )
 
     slot_manager = get_slot_manager()
     slot_manager.acquire_slot(device, browser)
@@ -76,6 +80,7 @@ def get_live_view_url(browserbase_session_id: str) -> str | None:
     if not browserbase_api_key:
         return None
     from browserbase import Browserbase
+
     bb = Browserbase(api_key=browserbase_api_key)
     live_view_links = bb.sessions.debug(browserbase_session_id)
     live_view_url = live_view_links.debuggerFullscreenUrl
