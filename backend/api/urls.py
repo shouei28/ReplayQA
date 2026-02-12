@@ -24,6 +24,7 @@ from .views.recorder import (
     RecorderStartRecordingView,
     RecorderToggleRecordingView,
     RecorderGetRecordedActionsView,
+    RecorderSaveTestView,
 )
 
 urlpatterns = [
@@ -63,4 +64,5 @@ urlpatterns = [
     path('recorder/<str:session_id>/toggle-recording', RecorderToggleRecordingView.as_view(), name='recorder-toggle-recording'),
     path('recorder/<str:session_id>/recorded-actions', RecorderGetRecordedActionsView.as_view(), name='recorder-recorded-actions'),
     path('recorder/<str:session_id>/end', RecorderEndView.as_view(), name='recorder-end'),
+    path('recorder/save-test', RecorderSaveTestView.as_view(), name='recorder-save-test'),
 ]

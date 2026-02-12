@@ -4,34 +4,6 @@ import os
 from typing import Any, List, Optional
 
 
-def steps_to_text(steps: List[Any]) -> str:
-    """Build human-readable steps text from steps JSON (for Job.steps field)."""
-    lines = []
-    for i, s in enumerate(steps or [], 1):
-        if not isinstance(s, dict):
-            continue
-        kind = s.get("kind")
-        if kind == "goto":
-            u = s.get("url", "")
-            lines.append(f"{i}. Navigate to {u}")
-        elif kind == "act":
-            instr = s.get("instruction", "")
-            lines.append(f"{i}. {instr}")
-        elif kind == "agent":
-            instr = s.get("instruction", "")
-            lines.append(f"{i}. {instr}")
-        elif kind == "login":
-            login_type = s.get("type", "username and password")
-            lines.append(f"{i}. login with {login_type}")
-        elif kind == "check":
-            instr = s.get("instruction", "")
-            lines.append(f"{i}. Check: {instr}")
-        elif kind == "delay_ms":
-            ms = s.get("delay_ms", 0)
-            lines.append(f"{i}. Wait {ms}ms")
-    return "\n".join(lines) if lines else ""
-
-
 def summarize_steps(
     steps: List[Any],
     url: str = "",
