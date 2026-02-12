@@ -3,7 +3,8 @@ Serializers for core models
 """
 
 from rest_framework import serializers
-from .models import User, Test, TestExecution, TestResult
+
+from .models import Test, TestExecution, TestResult, User
 
 
 class UserSerializer(serializers.ModelSerializer):

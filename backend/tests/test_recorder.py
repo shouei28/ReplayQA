@@ -2,10 +2,11 @@
 Tests for recorder API views.
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-from rest_framework.test import APIClient
 from rest_framework import status
+from rest_framework.test import APIClient
 
 from core.models import User
 

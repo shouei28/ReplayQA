@@ -8,10 +8,11 @@ Handles:
 """
 
 import os
-import time
 import threading
-from typing import Optional, Dict, Any
+import time
 from collections import deque
+from typing import Any, Dict, Optional
+
 from browserbase import Browserbase
 
 

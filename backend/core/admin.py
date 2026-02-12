@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import User, Test, TestExecution, TestResult
+
+from .models import Test, TestExecution, TestResult, User
 
 
 @admin.register(User)

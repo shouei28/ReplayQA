@@ -1,8 +1,8 @@
 """Recording pipeline: Playwright connect, inject script, polling loop, keep-alive."""
 
 import os
-import time
 import threading
+import time
 
 from playwright.sync_api import sync_playwright
 

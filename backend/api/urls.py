@@ -3,29 +3,16 @@ URL routing for API endpoints
 """
 
 from django.urls import path
+
 from .views import (
-    health_check,
-    run_pipeline,
-    get_test_status,
-    get_test_results,
-    list_tests,
-    delete_test_result,
-    saved_tests_list_create,
-    saved_test_detail,
-    get_screenshot,
-    get_auth_me,
-    auth_logout,
-    admin_management,
-    get_live_view,
+    admin_management, auth_logout, delete_test_result, get_auth_me, get_live_view,
+    get_screenshot, get_test_results, get_test_status, health_check, list_tests,
+    run_pipeline, saved_test_detail, saved_tests_list_create,
 )
 from .views.recorder import (
-    RecorderStartView,
-    RecorderLiveViewView,
-    RecorderEndView,
-    RecorderStartRecordingView,
+    RecorderEndView, RecorderGetRecordedActionsView, RecorderLiveViewView,
+    RecorderSaveTestView, RecorderStartRecordingView, RecorderStartView,
     RecorderToggleRecordingView,
-    RecorderGetRecordedActionsView,
-    RecorderSaveTestView,
 )
 
 urlpatterns = [

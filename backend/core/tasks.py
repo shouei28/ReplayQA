@@ -3,8 +3,9 @@ Celery tasks for ReplayQA
 Background tasks that can be executed asynchronously
 """
 
-from celery import shared_task
 import logging
+
+from celery import shared_task
 
 logger = logging.getLogger(__name__)
 

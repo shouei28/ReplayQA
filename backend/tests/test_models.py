@@ -3,8 +3,8 @@ Tests for database connection
 """
 
 import pytest
-from django.db import connection
 from django.contrib.auth import get_user_model
+from django.db import connection
 
 User = get_user_model()
 

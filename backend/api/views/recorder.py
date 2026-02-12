@@ -3,23 +3,17 @@ Recorder API views. Business logic lives in services.recorder.
 Saving a test uses core.models.Test (single test table).
 """
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from core.models import Test
 from services.recorder import (
-    start_session,
-    end_session,
-    get_live_view_url,
-    start_recording,
-    get_recorded_actions,
-    toggle_recording,
-    summarize_steps,
+    end_session, get_live_view_url, get_recorded_actions, start_recording,
+    start_session, state, summarize_steps, toggle_recording,
 )
-from services.recorder import state
 
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
