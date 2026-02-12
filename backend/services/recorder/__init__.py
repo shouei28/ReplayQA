@@ -6,8 +6,11 @@ Views in api.views.recorder call these; business logic lives here.
 from .recording_service import start_recording
 from .session_service import end_session, get_live_view_url, start_session
 from .state import (
-    get_recorded_actions, recording_lock, recording_sessions,
-    release_slot_and_remove_session, toggle_recording,
+    get_recorded_actions,
+    recording_lock,
+    recording_sessions,
+    release_slot_and_remove_session,
+    toggle_recording,
 )
 from .summarize_steps import summarize_steps
 

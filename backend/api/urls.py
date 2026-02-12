@@ -5,13 +5,27 @@ URL routing for API endpoints
 from django.urls import path
 
 from .views import (
-    admin_management, auth_logout, delete_test_result, get_auth_me, get_live_view,
-    get_screenshot, get_test_results, get_test_status, health_check, list_tests,
-    run_pipeline, saved_test_detail, saved_tests_list_create,
+    admin_management,
+    auth_logout,
+    delete_test_result,
+    get_auth_me,
+    get_live_view,
+    get_screenshot,
+    get_test_results,
+    get_test_status,
+    health_check,
+    list_tests,
+    run_pipeline,
+    saved_test_detail,
+    saved_tests_list_create,
 )
 from .views.recorder import (
-    RecorderEndView, RecorderGetRecordedActionsView, RecorderLiveViewView,
-    RecorderSaveTestView, RecorderStartRecordingView, RecorderStartView,
+    RecorderEndView,
+    RecorderGetRecordedActionsView,
+    RecorderLiveViewView,
+    RecorderSaveTestView,
+    RecorderStartRecordingView,
+    RecorderStartView,
     RecorderToggleRecordingView,
 )
 

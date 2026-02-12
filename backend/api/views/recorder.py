@@ -11,8 +11,14 @@ from rest_framework.views import APIView
 
 from core.models import Test
 from services.recorder import (
-    end_session, get_live_view_url, get_recorded_actions, start_recording,
-    start_session, state, summarize_steps, toggle_recording,
+    end_session,
+    get_live_view_url,
+    get_recorded_actions,
+    start_recording,
+    start_session,
+    state,
+    summarize_steps,
+    toggle_recording,
 )
 
 
