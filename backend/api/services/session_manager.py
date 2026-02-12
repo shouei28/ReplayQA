@@ -1,6 +1,6 @@
 import os
 import uuid
-from typing import Dict, Optional, Any
+from typing import Dict, Any
 from browserbase import Browserbase
 from api.services.lock_manager import acquire_browser_slot, release_browser_slot
 
@@ -16,10 +16,10 @@ def start_session(user_id: str = "system") -> Dict[str, Any]:
     2. If free, creates Browserbase session.
     3. Returns Session ID + Lock Token.
     """
-    session_owner_token = f"{user_id}_{uuid.uuid4()}"
+    session_user_token = f"{user_id}_{uuid.uuid4()}"
     
     # Check if we can run
-    if not acquire_browser_slot(session_owner_token):
+    if not acquire_browser_slot(session_user_token):
         raise BlockingIOError("System busy. Browser is in use.")
 
     try:
@@ -35,11 +35,11 @@ def start_session(user_id: str = "system") -> Dict[str, Any]:
             "session_id": session.id,
             "connect_url": session.connect_url,
             "live_view_url": live_view,
-            "lock_token": session_owner_token 
+            "lock_token": session_user_token 
         }
 
     except Exception as e:
-        release_browser_slot(session_owner_token)
+        release_browser_slot(session_user_token)
         raise e
 
 def end_session(session_id: str, lock_token: str):
