@@ -43,7 +43,7 @@ def queue_test_run(self, test_actions):
         logs = run_browserbase_session(session_data["connect_url"], test_actions)
         return {"status": "completed", "logs": logs}
 
-    except BlockingIOError:
+    except BlockingIOError: # Locked retry after delay
         raise self.retry(countdown=10)
         
     except Exception as e:

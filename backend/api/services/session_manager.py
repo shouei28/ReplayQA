@@ -23,19 +23,18 @@ def start_session(user_id: str = "system") -> Dict[str, Any]:
         raise BlockingIOError("System busy. Browser is in use.")
 
     try:
+        # Get client and create session if lock acquired
         bb = get_client()
         session = bb.sessions.create(project_id=os.environ.get("BROWSERBASE_PROJECT_ID"))
-
-        # URL to see the browser
-        live_view = session.debugger_fullscreen_url
-        if live_view:
-            live_view = f"{live_view}&navbar=false"
+        sess_id = session.id
+        live_view = f"https://www.browserbase.com/sessions/{sess_id}"
+        connect_url = session.connect_url
 
         return {
-            "session_id": session.id,
-            "connect_url": session.connect_url,
+            "session_id": sess_id,
+            "connect_url": connect_url,
             "live_view_url": live_view,
-            "lock_token": session_user_token 
+            "lock_token": session_user_token
         }
 
     except Exception as e:
@@ -48,7 +47,10 @@ def end_session(session_id: str, lock_token: str):
     """
     bb = get_client()
     try:
-        bb.sessions.update(session_id, status="COMPLETED")
+        project_id = os.environ.get("BROWSERBASE_PROJECT_ID")
+        bb.sessions.update(session_id, project_id=project_id, status="REQUEST_RELEASE")
+        
+        print(f"Session {session_id} release requested.")
     except Exception as e:
         print(f"Warning: Failed to close session {session_id}: {e}")
     finally:
