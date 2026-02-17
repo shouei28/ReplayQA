@@ -1,6 +1,7 @@
 from celery import shared_task
 from playwright.sync_api import sync_playwright
-from api.services.session_manager import start_session, end_session
+
+from api.services.session_manager import end_session, start_session
 
 
 def run_browserbase_session(connect_url, actions):

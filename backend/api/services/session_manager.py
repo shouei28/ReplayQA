@@ -1,7 +1,9 @@
 import os
 import uuid
-from typing import Dict, Any
+from typing import Any, Dict
+
 from browserbase import Browserbase
+
 from api.services.lock_manager import acquire_browser_slot, release_browser_slot
 
 
