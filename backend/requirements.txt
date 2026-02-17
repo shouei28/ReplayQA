@@ -24,6 +24,15 @@ browserbase>=1.4.0
 # Playwright (recorder connects to Browserbase via CDP)
 playwright>=1.40.0
 
+# Stagehand (AI-powered browser automation)
+stagehand>=0.1.0
+
+# Google Gemini AI (test evaluation)
+google-generativeai>=0.3.0
+
+# Supabase (screenshot blob storage)
+supabase>=2.0.0
+
 # Date/time utilities
 python-dateutil>=2.8.2
 
