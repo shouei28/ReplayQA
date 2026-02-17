@@ -21,30 +21,41 @@ def test_task():
     return "Task completed"
 
 
-@shared_task(name="core.tasks.mock_pipeline_task")
-def mock_pipeline_task(test_execution_id, url, steps):
+@shared_task(name="core.tasks.run_test_execution", bind=True, max_retries=1)
+def run_test_execution(self, test_execution_id):
     """
-    Mock pipeline task for test execution
-    This is a placeholder that will be replaced with actual test execution logic
+    Execute a test using Stagehand and evaluate results with Gemini.
+
+    This is the main background task queued by the ``run_pipeline`` API
+    endpoint.  It delegates entirely to
+    ``services.runner.runner_service.execute_test``.
 
     Args:
-        test_execution_id: UUID of the test execution
-        url: Target URL to test
-        steps: List of test steps to execute
+        test_execution_id: UUID (str) of the TestExecution record.
 
     Returns:
-        dict: Task result status
+        dict: Execution result with status, test_result_id, etc.
     """
-    print(f"Test: Mock pipeline task started for execution {test_execution_id}")
-    print(f"Test: URL: {url}")
-    print(f"Test: Steps: {steps}")
-    logger.info(f"Mock pipeline task started for execution {test_execution_id}")
+    logger.info("Celery task started for execution %s", test_execution_id)
+    try:
+        from services.runner.runner_service import execute_test
 
-    # TODO: Replace with actual test execution logic
-    # This is just a placeholder that simulates work
+        result = execute_test(test_execution_id)
+        logger.info("Celery task finished for %s — %s", test_execution_id, result.get("status"))
+        return result
+    except Exception as exc:
+        logger.error("Celery task failed for %s: %s", test_execution_id, exc, exc_info=True)
+        # Mark the execution as failed so the frontend sees a terminal state.
+        try:
+            from core.models import TestExecution
+            from django.utils import timezone
 
-    return {
-        "status": "completed",
-        "test_execution_id": str(test_execution_id),
-        "message": "Mock task completed successfully",
-    }
+            execution = TestExecution.objects.get(id=test_execution_id)
+            execution.status = "failed"
+            execution.error_message = str(exc)
+            execution.message = f"Task error: {exc}"
+            execution.completed_at = timezone.now()
+            execution.save()
+        except Exception:
+            pass
+        raise
