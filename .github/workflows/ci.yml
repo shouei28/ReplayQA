@@ -111,7 +111,7 @@ jobs:
 
       - name: Run Jest tests
         working-directory: ./frontend
-        run: npm test -- --ci --watchAll=false
+        run: npm test -- --ci --watchAll=false --coverage
 
   lint:
     name: Lint Code
