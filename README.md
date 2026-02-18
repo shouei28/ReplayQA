@@ -542,6 +542,13 @@ Access to XMLHttpRequest blocked by CORS policy
 - Install django-cors-headers if not already installed
 ```
 ```
+# Operational use cases as of now:
+ - Automate creating and running tests to verify student user workflows are working correctly after any site or app changes.
+ - Simplify testing for developers with less experience in testing
+ - Finding logical errors that weren’t caught during our testing.
+
+```
+```
 # ReplayQA
 Making QA easier than ever
 
