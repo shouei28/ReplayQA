@@ -13,10 +13,15 @@ export async function apiFetch<T>(
   options?: RequestInit
 ): Promise<T> {
   const url = `${getBaseUrl().replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("access_token")
+      : null;
   const res = await fetch(url, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });

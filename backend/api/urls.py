@@ -3,6 +3,7 @@ URL routing for API endpoints
 """
 
 from django.urls import path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from .views import (
     admin_management,
@@ -28,6 +29,7 @@ from .views.recorder import (
     RecorderStartView,
     RecorderToggleRecordingView,
 )
+from .views.register import register
 
 urlpatterns = [
     # Health check
@@ -49,6 +51,9 @@ urlpatterns = [
         name="get-screenshot",
     ),
     # Authentication
+    path("auth/login", TokenObtainPairView.as_view(), name="auth-login"),
+    path("auth/refresh", TokenRefreshView.as_view(), name="auth-refresh"),
+    path("auth/register", register, name="auth-register"),
     path("auth/me", get_auth_me, name="auth-me"),
     path("auth/logout", auth_logout, name="auth-logout"),
     # Admin
