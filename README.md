@@ -36,8 +36,6 @@ cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python manage.py migrate
-python manage.py createsuperuser
 
 # Frontend setup
 cd ../frontend
@@ -50,15 +48,8 @@ python manage.py runserver
 
 # Terminal 2 - Frontend
 cd frontend
-npm start
+npm run dev
 
-# Terminal 3 - Celery worker
-cd backend
-celery -A replayqa worker -l info
-
-# Terminal 4 - Celery beat (for scheduled tasks)
-cd backend
-celery -A replayqa beat -l info
 ```
 
 ---
