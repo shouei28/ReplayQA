@@ -2,123 +2,134 @@
 Saved Tests Views
 Presentation/API Layer - Endpoints for managing reusable test definitions
 """
+
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from core.models import Test
 
-@api_view(['GET', 'POST'])
+
+@api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def saved_tests_list_create(request):
     """
     GET /saved-tests - Get all saved tests for the current user
     POST /saved-tests - Save a new reusable test definition
-    
-    GET: Returns list of all Test records owned by the authenticated user.
-    POST: Creates a Test record that can be reused for multiple executions.
-          Stores test steps, URL, and expected behavior.
-    
-    POST Request Body:
-    - test_name (required): Name of the test
-    - description (optional): Test description
-    - url (required): Target URL
-    - steps (required): JSON array of test steps
-    - expected_behavior (optional): Expected behavior description
-    
-    Returns:
-    GET:
-    - 200: Array of saved test objects
-    - 404: User not found
-    
-    POST:
-    - 201: Full saved test object
-    - 400: Missing required field
-    - 404: User not found
     """
-    if request.method == 'GET':
-        # TODO: Implement saved tests list retrieval
-        # 1. Query Test filtered by user
-        # 2. Order by created_at descending
-        # 3. Return serialized list
-        return Response([])
-    else:  # POST
-        # TODO: Implement saved test creation
-        # 1. Validate request data
-        # 2. Create Test record with user association
-        # 3. Return serialized Test object
-        return Response({
-            'id': 'placeholder-id',
-            'test_name': 'Placeholder Test',
-            'url': '',
-            'steps': []
-        }, status=status.HTTP_201_CREATED)
+    if request.method == "GET":
+        tests = Test.objects.filter(user=request.user).order_by("-created_at")
+        data = [
+            {
+                "id": str(t.id),
+                "test_name": t.test_name,
+                "description": t.description,
+                "url": t.url,
+                "steps": t.steps,
+                "expected_behavior": t.expected_behavior,
+                "created_at": t.created_at.isoformat(),
+                "updated_at": t.updated_at.isoformat(),
+            }
+            for t in tests
+        ]
+        return Response(data)
+
+    # POST
+    body = request.data
+    test_name = body.get("test_name")
+    url = body.get("url")
+    steps = body.get("steps")
+
+    if not test_name:
+        return Response(
+            {"error": "test_name is required"}, status=status.HTTP_400_BAD_REQUEST
+        )
+    if not url:
+        return Response(
+            {"error": "url is required"}, status=status.HTTP_400_BAD_REQUEST
+        )
+    if not steps:
+        return Response(
+            {"error": "steps is required"}, status=status.HTTP_400_BAD_REQUEST
+        )
+
+    test = Test.objects.create(
+        user=request.user,
+        test_name=test_name,
+        description=body.get("description", ""),
+        url=url,
+        steps=steps,
+        expected_behavior=body.get("expected_behavior", ""),
+    )
+    return Response(
+        {
+            "id": str(test.id),
+            "test_name": test.test_name,
+            "description": test.description,
+            "url": test.url,
+            "steps": test.steps,
+            "expected_behavior": test.expected_behavior,
+            "created_at": test.created_at.isoformat(),
+            "updated_at": test.updated_at.isoformat(),
+        },
+        status=status.HTTP_201_CREATED,
+    )
 
 
-@api_view(['GET', 'PUT', 'DELETE'])
+@api_view(["GET", "PUT", "DELETE"])
 @permission_classes([IsAuthenticated])
 def saved_test_detail(request, test_id):
     """
     GET /saved-tests/<test_id> - Retrieve one saved test definition
     PUT /saved-tests/<test_id> - Update a saved test definition
     DELETE /saved-tests/<test_id> - Delete a saved test definition
-    
-    GET: Returns complete Test record including all steps and configuration.
-    PUT: Updates any provided fields of a Test record. Only updates fields that are provided.
-    DELETE: Removes the Test record from the database. Does not delete associated TestExecution or TestResult records.
-    
-    Path Params:
-    - test_id: UUID of the saved test
-    
-    PUT Request Body (all optional):
-    - test_name: Updated test name
-    - description: Updated description
-    - url: Updated target URL
-    - steps: Updated JSON array of steps
-    - expected_behavior: Updated expected behavior
-    
-    Returns:
-    GET:
-    - 200: Full saved test object
-    - 404: Test or user not found
-    
-    PUT:
-    - 200: Updated saved test object
-    - 404: Test or user not found
-    
-    DELETE:
-    - 200: Success message
-    - 404: Test or user not found
     """
-    if request.method == 'GET':
-        # TODO: Implement saved test retrieval
-        # 1. Get Test by ID
-        # 2. Verify user ownership
-        # 3. Return serialized Test object
-        return Response({
-            'id': test_id,
-            'test_name': 'Placeholder Test',
-            'url': '',
-            'steps': []
-        })
-    elif request.method == 'PUT':
-        # TODO: Implement saved test update
-        # 1. Get Test by ID
-        # 2. Verify user ownership
-        # 3. Update provided fields
-        # 4. Save and return updated Test object
-        return Response({
-            'id': test_id,
-            'test_name': 'Updated Test',
-            'url': '',
-            'steps': []
-        })
+    try:
+        test = Test.objects.get(id=test_id, user=request.user)
+    except Test.DoesNotExist:
+        return Response({"error": "Test not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == "GET":
+        return Response(
+            {
+                "id": str(test.id),
+                "test_name": test.test_name,
+                "description": test.description,
+                "url": test.url,
+                "steps": test.steps,
+                "expected_behavior": test.expected_behavior,
+                "created_at": test.created_at.isoformat(),
+                "updated_at": test.updated_at.isoformat(),
+            }
+        )
+
+    elif request.method == "PUT":
+        body = request.data
+        if "test_name" in body:
+            test.test_name = body["test_name"]
+        if "description" in body:
+            test.description = body["description"]
+        if "url" in body:
+            test.url = body["url"]
+        if "steps" in body:
+            test.steps = body["steps"]
+        if "expected_behavior" in body:
+            test.expected_behavior = body["expected_behavior"]
+        test.save()
+        return Response(
+            {
+                "id": str(test.id),
+                "test_name": test.test_name,
+                "description": test.description,
+                "url": test.url,
+                "steps": test.steps,
+                "expected_behavior": test.expected_behavior,
+                "created_at": test.created_at.isoformat(),
+                "updated_at": test.updated_at.isoformat(),
+            }
+        )
+
     else:  # DELETE
-        # TODO: Implement saved test deletion
-        # 1. Get Test by ID
-        # 2. Verify user ownership
-        # 3. Delete Test record
-        # 4. Return success message
-        return Response({
-            'message': 'Test deleted successfully'
-        })
+        test.delete()
+        return Response({"message": "Test deleted successfully"})

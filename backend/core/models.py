@@ -1,16 +1,19 @@
 """
 Database models for ReplayQA
 """
-from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+
 import uuid
+
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+from django.db import models
 
 
 class UserManager(BaseUserManager):
     """Custom user manager"""
+
     def create_user(self, username, email, password=None, **extra_fields):
         if not email:
-            raise ValueError('The Email field must be set')
+            raise ValueError("The Email field must be set")
         email = self.normalize_email(email)
         user = self.model(username=username, email=email, **extra_fields)
         user.set_password(password)
@@ -18,8 +21,8 @@ class UserManager(BaseUserManager):
         return user
 
     def create_superuser(self, username, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
         return self.create_user(username, email, password, **extra_fields)
 
 
@@ -28,6 +31,7 @@ class User(AbstractBaseUser):
     Custom User model
     Stores user accounts and authentication data
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     username = models.CharField(max_length=150, unique=True)
     email = models.EmailField(unique=True)
@@ -46,8 +50,8 @@ class User(AbstractBaseUser):
 
     objects = UserManager()
 
-    USERNAME_FIELD = 'username'
-    REQUIRED_FIELDS = ['email']
+    USERNAME_FIELD = "username"
+    REQUIRED_FIELDS = ["email"]
 
     def __str__(self):
         return self.username
@@ -58,8 +62,9 @@ class Test(models.Model):
     Saved Test model
     Stores reusable test definitions
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_tests')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="saved_tests")
     test_name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     url = models.URLField()
@@ -69,8 +74,8 @@ class Test(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'test'
-        ordering = ['-created_at']
+        db_table = "test"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.test_name} ({self.user.username})"
@@ -81,24 +86,36 @@ class TestExecution(models.Model):
     Test Execution model
     Stores test execution runs and their status
     """
+
     STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('running', 'Running'),
-        ('completed', 'Completed'),
-        ('failed', 'Failed'),
-        ('cancelled', 'Cancelled'),
+        ("pending", "Pending"),
+        ("running", "Running"),
+        ("completed", "Completed"),
+        ("failed", "Failed"),
+        ("cancelled", "Cancelled"),
     ]
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # Link to saved Test; Django creates test_id column automatically for this FK
-    test = models.ForeignKey(Test, on_delete=models.SET_NULL, null=True, blank=True, related_name='executions')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='test_executions')
+    test = models.ForeignKey(
+        Test,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="executions",
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="test_executions"
+    )
     test_name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     url = models.URLField()
     steps = models.JSONField()  # Instructions/steps as JSON
     expected_behavior = models.TextField(blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    browserbase_session_id = models.CharField(max_length=255, null=True, blank=True)
+    device = models.CharField(max_length=20, default="desktop")
+    browser = models.CharField(max_length=20, default="chrome")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     progress = models.IntegerField(default=0)  # 0-100
     message = models.TextField(null=True, blank=True)
     total_runtime_sec = models.FloatField(null=True, blank=True)
@@ -109,8 +126,8 @@ class TestExecution(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'test_execution'
-        ordering = ['-created_at']
+        db_table = "test_execution"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.test_name} - {self.status}"
@@ -121,9 +138,14 @@ class TestResult(models.Model):
     Test Result model
     Stores detailed results of completed test executions
     """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    test_execution = models.OneToOneField(TestExecution, on_delete=models.CASCADE, related_name='result')
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='test_results')
+    test_execution = models.OneToOneField(
+        TestExecution, on_delete=models.CASCADE, related_name="result"
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="test_results"
+    )
     test_name = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     url = models.URLField()
@@ -145,8 +167,8 @@ class TestResult(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'test_result'
-        ordering = ['-created_at']
+        db_table = "test_result"
+        ordering = ["-created_at"]
 
     def __str__(self):
         return f"{self.test_name} - {'Passed' if self.success else 'Failed'}"
