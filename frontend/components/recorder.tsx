@@ -26,10 +26,17 @@ import { cn } from "@/lib/utils";
 const getBaseUrl = () =>
   typeof window !== "undefined"
     ? (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api").replace(
-        /\/$/,
-        ""
-      )
+      /\/$/,
+      ""
+    )
     : "http://127.0.0.1:8000/api";
+
+/** Build Authorization header from stored JWT token */
+const authHeaders = (): Record<string, string> => {
+  if (typeof window === "undefined") return {};
+  const token = localStorage.getItem("access_token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 /** Single recorded step (from browser actions only). */
 interface RecordedStep {
@@ -100,9 +107,9 @@ export function Recorder() {
       fetch(`${getBaseUrl()}/recorder/${sid}/end`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ browserbase_session_id: bb, device: d, browser: b }),
-      }).catch(() => {});
+      }).catch(() => { });
     };
   }, []);
 
@@ -121,7 +128,7 @@ export function Recorder() {
       const res = await fetch(`${getBaseUrl()}/recorder/start`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ url: url.trim(), device, browser }),
       });
       if (!res.ok) {
@@ -150,7 +157,7 @@ export function Recorder() {
         try {
           const r = await fetch(
             `${getBaseUrl()}/recorder/${sid}/live-view?browserbase_session_id=${encodeURIComponent(bbSid)}`,
-            { method: "GET", credentials: "include" }
+            { method: "GET", credentials: "include", headers: { ...authHeaders() } }
           );
           if (r.ok) {
             const d = await r.json();
@@ -196,7 +203,7 @@ export function Recorder() {
     const res = await fetch(`${getBaseUrl()}/recorder/${sid}/start-recording`, {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({
         browserbase_session_id: browserbaseSid,
         connect_url: connectUrl,
@@ -214,6 +221,7 @@ export function Recorder() {
         const r = await fetch(`${getBaseUrl()}/recorder/${sid}/recorded-actions`, {
           method: "GET",
           credentials: "include",
+          headers: { ...authHeaders() },
         });
         if (!r.ok) return;
         const data = await r.json();
@@ -275,7 +283,6 @@ export function Recorder() {
           }
           return result;
         });
-        toast({ title: "Actions recorded", description: `${newActions.length} step(s) added.` });
       } catch {
         /* ignore poll errors */
       }
@@ -288,7 +295,7 @@ export function Recorder() {
       const res = await fetch(`${getBaseUrl()}/recorder/${sid}/toggle-recording`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ enabled }),
       });
       if (!res.ok) throw new Error("Failed to toggle");
@@ -351,7 +358,7 @@ export function Recorder() {
       await fetch(`${getBaseUrl()}/recorder/${sid}/end`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({
           browserbase_session_id: browserbaseSessionId,
           device,
@@ -399,7 +406,7 @@ export function Recorder() {
       const res = await fetch(`${getBaseUrl()}/recorder/save-test`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({
           name,
           expected_behavior,

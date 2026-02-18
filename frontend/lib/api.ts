@@ -29,7 +29,6 @@ export async function apiFetch<T>(
     ...options,
     headers: {
       "Content-Type": "application/json",
-      // ...authHeaders(),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
@@ -70,6 +69,17 @@ export const recorderApi = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  saveTest: (body: {
+    test_name: string;
+    description?: string;
+    url: string;
+    steps: unknown[];
+    expected_behavior?: string;
+  }) =>
+    apiFetch<{ success: boolean; test_id: string }>("recorder/save-test", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };
 
 /* ------------------------------------------------------------------ */
@@ -77,12 +87,30 @@ export const recorderApi = {
 /* ------------------------------------------------------------------ */
 
 export const testsApi = {
-  list: () => apiFetch<{ results: Test[] }>("tests/"),
+  list: () => apiFetch<Test[]>("saved-tests"),
 
-  get: (id: string) => apiFetch<Test>(`tests/${id}/`),
+  get: (id: string) => apiFetch<Test>(`saved-tests/${id}`),
+
+  create: (body: {
+    test_name: string;
+    description?: string;
+    url: string;
+    steps: unknown[];
+    expected_behavior?: string;
+  }) =>
+    apiFetch<Test>("saved-tests", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  update: (id: string, body: Partial<Test>) =>
+    apiFetch<Test>(`saved-tests/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
 
   delete: (id: string) =>
-    apiFetch<void>(`tests/${id}/`, { method: "DELETE" }),
+    apiFetch<void>(`saved-tests/${id}`, { method: "DELETE" }),
 };
 
 /* ------------------------------------------------------------------ */
@@ -99,15 +127,15 @@ export const pipelineApi = {
     test_name?: string;
   }) =>
     apiFetch<{ job_id: string; message: string; status: string }>(
-      "pipeline/run-pipeline",
+      "run-pipeline",
       { method: "POST", body: JSON.stringify(body) }
     ),
 
   status: (executionId: string) =>
-    apiFetch<TestExecution>(`pipeline/status/${executionId}`),
+    apiFetch<TestExecution>(`status/${executionId}`),
 
   results: (executionId: string) =>
-    apiFetch<TestResult>(`pipeline/results/${executionId}`),
+    apiFetch<TestResult>(`results/${executionId}`),
 
   liveView: (executionId: string) =>
     apiFetch<{
@@ -115,7 +143,7 @@ export const pipelineApi = {
       session_id: string;
       device: string;
       browser: string;
-    }>(`pipeline/live-view/${executionId}/`),
+    }>(`live-view/${executionId}/`),
 };
 
 /* ------------------------------------------------------------------ */
@@ -124,5 +152,8 @@ export const pipelineApi = {
 
 export const executionsApi = {
   list: () =>
-    apiFetch<{ results: TestExecution[] }>("executions/"),
+    apiFetch<{ results: TestExecution[] }>("tests"),
+
+  delete: (id: string) =>
+    apiFetch<void>(`${id}`, { method: "DELETE" }),
 };

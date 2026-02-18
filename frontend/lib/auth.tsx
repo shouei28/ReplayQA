@@ -69,6 +69,30 @@ async function apiFetchMe(token: string): Promise<AuthUser> {
     return res.json() as Promise<AuthUser>;
 }
 
+/** Try to refresh the access token using the stored refresh token */
+async function tryRefreshToken(): Promise<string | null> {
+    const refresh = localStorage.getItem("refresh_token");
+    if (!refresh) return null;
+    try {
+        const res = await fetch(`${API_BASE}/auth/refresh`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh }),
+        });
+        if (!res.ok) return null;
+        const data = await res.json();
+        const newAccess = data.access as string;
+        localStorage.setItem("access_token", newAccess);
+        // If rotated, save new refresh token too
+        if (data.refresh) {
+            localStorage.setItem("refresh_token", data.refresh);
+        }
+        return newAccess;
+    } catch {
+        return null;
+    }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Provider                                                           */
 /* ------------------------------------------------------------------ */
@@ -86,12 +110,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
             return;
         }
+
+        // Try the stored access token first, then refresh if it fails
         apiFetchMe(stored)
             .then((u) => {
                 setUser(u);
                 setToken(stored);
             })
-            .catch(() => {
+            .catch(async () => {
+                // Access token expired — try refreshing
+                const newToken = await tryRefreshToken();
+                if (newToken) {
+                    try {
+                        const u = await apiFetchMe(newToken);
+                        setUser(u);
+                        setToken(newToken);
+                        return;
+                    } catch {
+                        // Refresh token also invalid
+                    }
+                }
+                // Both tokens invalid — clear and redirect
                 localStorage.removeItem("access_token");
                 localStorage.removeItem("refresh_token");
             })
