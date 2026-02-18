@@ -549,6 +549,16 @@ Access to XMLHttpRequest blocked by CORS policy
 
 ```
 ```
+# ReplayQA Beta Release
+
+**Release Identifier (Git Tag):** `beta-release`
+
+To checkout the code for this specific beta release, run the following command in your terminal:
+```bash
+git checkout beta-release
+```
+```
+```
 # ReplayQA
 Making QA easier than ever
 
