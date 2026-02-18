@@ -31,21 +31,20 @@ from typing import Any, Dict, List
 
 from asgiref.sync import sync_to_async
 from django.utils import timezone
-from playwright.sync_api import sync_playwright
-
 from google.genai.types import Content, Part
+from playwright.sync_api import sync_playwright
 
 from core.models import TestExecution, TestResult
 from services.browser_slot_manager import get_slot_manager
+from services.runner.evaluator_service import evaluate_test_results
 from services.runner.gemini_cua_service import (
     MAX_CUA_STEPS,
-    SCREEN_WIDTH,
     SCREEN_HEIGHT,
+    SCREEN_WIDTH,
     execute_function_calls_sync,
     get_cua_client_and_config,
     get_function_responses,
 )
-from services.runner.evaluator_service import evaluate_test_results
 from services.runner.storage_service import upload_screenshot
 
 logger = logging.getLogger(__name__)
@@ -55,13 +54,16 @@ logger = logging.getLogger(__name__)
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _viewport_for_device(device: str) -> Dict[str, int]:
     if device == "mobile":
         return {"width": 375, "height": 667}
     return {"width": SCREEN_WIDTH, "height": SCREEN_HEIGHT}
 
 
-def _create_browser_session(device: str = "desktop", browser: str = "chrome") -> Dict[str, Any]:
+def _create_browser_session(
+    device: str = "desktop", browser: str = "chrome"
+) -> Dict[str, Any]:
     project_id = os.getenv("BROWSERBASE_PROJECT_ID", "")
     slot_mgr = get_slot_manager()
     slot_mgr.acquire_slot(device, browser)
@@ -95,6 +97,7 @@ def _release_slot(device: str = "desktop", browser: str = "chrome") -> None:
 # Build prompt from test steps
 # ---------------------------------------------------------------------------
 
+
 def _build_user_prompt(execution: TestExecution) -> str:
     """Build the initial prompt with all test context."""
     steps_text = ""
@@ -119,6 +122,7 @@ def _build_user_prompt(execution: TestExecution) -> str:
 # Sync CUA agent loop (runs inside sync_playwright)
 # ---------------------------------------------------------------------------
 
+
 def _run_cua_loop(
     page,
     execution: TestExecution,
@@ -134,11 +138,13 @@ def _run_cua_loop(
 
     executed_steps: List[Dict[str, Any]] = []
     screenshot_urls: List[str] = []
+    screenshot_bytes_list: List[bytes] = []  # raw bytes for evaluator
 
     # Take initial screenshot
     initial_screenshot = page.screenshot(type="png")
+    screenshot_bytes_list.append(initial_screenshot)
 
-    # Try to upload initial screenshot
+    # Try to upload initial screenshot (best-effort, not required)
     try:
         url = upload_screenshot(str(execution.id), 0, initial_screenshot)
         if url:
@@ -179,14 +185,16 @@ def _run_cua_loop(
             )
         except Exception as exc:
             logger.error("Gemini CUA call failed at turn %d: %s", turn, exc)
-            executed_steps.append({
-                "step_number": turn,
-                "thought": f"Gemini API error: {exc}",
-                "action": {"name": "error"},
-                "status": "failed",
-                "error": str(exc),
-                "timestamp": datetime.now().isoformat(),
-            })
+            executed_steps.append(
+                {
+                    "step_number": turn,
+                    "thought": f"Gemini API error: {exc}",
+                    "action": {"name": "error"},
+                    "status": "failed",
+                    "error": str(exc),
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
             break
 
         candidate = response.candidates[0]
@@ -195,9 +203,7 @@ def _run_cua_loop(
         contents.append(candidate.content)
 
         # Check if there are function calls
-        has_function_calls = any(
-            part.function_call for part in candidate.content.parts
-        )
+        has_function_calls = any(part.function_call for part in candidate.content.parts)
 
         if not has_function_calls:
             # Model is done — extract text response
@@ -206,21 +212,21 @@ def _run_cua_loop(
             )
             logger.info("Agent finished at turn %d: %s", turn, final_text[:200])
 
-            executed_steps.append({
-                "step_number": turn,
-                "thought": final_text,
-                "action": {"name": "done"},
-                "instruction": "Test completed",
-                "type": "done",
-                "status": "passed",
-                "timestamp": datetime.now().isoformat(),
-            })
+            executed_steps.append(
+                {
+                    "step_number": turn,
+                    "thought": final_text,
+                    "action": {"name": "done"},
+                    "instruction": "Test completed",
+                    "type": "done",
+                    "status": "passed",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
             break
 
         # Extract thoughts from text parts
-        thoughts = [
-            part.text for part in candidate.content.parts if part.text
-        ]
+        thoughts = [part.text for part in candidate.content.parts if part.text]
         thought_text = " ".join(thoughts) if thoughts else ""
 
         # Extract action names for logging
@@ -231,7 +237,9 @@ def _run_cua_loop(
         ]
         logger.info(
             "Turn %d — thought: %s | actions: %s",
-            turn, thought_text[:100], action_names,
+            turn,
+            thought_text[:100],
+            action_names,
         )
 
         # Update progress with action info
@@ -245,8 +253,9 @@ def _run_cua_loop(
 
         # Build function responses with new screenshot
         function_responses, screenshot_bytes = get_function_responses(page, results)
+        screenshot_bytes_list.append(screenshot_bytes)  # keep raw bytes for evaluator
 
-        # Upload screenshot
+        # Upload screenshot (best-effort, not required for evaluation)
         try:
             url = upload_screenshot(str(execution.id), turn, screenshot_bytes)
             if url:
@@ -264,21 +273,24 @@ def _run_cua_loop(
 
         # Record executed steps
         for fname, result in results:
-            executed_steps.append({
-                "step_number": turn,
-                "thought": thought_text,
-                "action": {"name": fname},
-                "instruction": thought_text,
-                "type": fname,
-                "status": "failed" if result.get("error") else "passed",
-                "error": result.get("error"),
-                "screenshot_url": screenshot_urls[-1] if screenshot_urls else "",
-                "timestamp": datetime.now().isoformat(),
-            })
+            executed_steps.append(
+                {
+                    "step_number": turn,
+                    "thought": thought_text,
+                    "action": {"name": fname},
+                    "instruction": thought_text,
+                    "type": fname,
+                    "status": "failed" if result.get("error") else "passed",
+                    "error": result.get("error"),
+                    "screenshot_url": screenshot_urls[-1] if screenshot_urls else "",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
 
     return {
         "executed_steps": executed_steps,
         "screenshot_urls": screenshot_urls,
+        "screenshot_bytes": screenshot_bytes_list,
         "final_text": final_text,
     }
 
@@ -286,6 +298,7 @@ def _run_cua_loop(
 # ---------------------------------------------------------------------------
 # Full pipeline (sync — called from Celery)
 # ---------------------------------------------------------------------------
+
 
 def execute_test(test_execution_id: str) -> Dict[str, Any]:
     """
@@ -295,7 +308,9 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
     logger.info("Starting CUA pipeline for execution %s", test_execution_id)
 
     try:
-        execution = TestExecution.objects.select_related("user").get(id=test_execution_id)
+        execution = TestExecution.objects.select_related("user").get(
+            id=test_execution_id
+        )
     except TestExecution.DoesNotExist:
         logger.error("TestExecution %s not found", test_execution_id)
         return {"status": "error", "message": "TestExecution not found"}
@@ -351,10 +366,16 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
 
         executed_steps = loop_result["executed_steps"]
         screenshot_urls = loop_result["screenshot_urls"]
+        screenshot_bytes_list = loop_result.get("screenshot_bytes", [])
 
         runtime = (timezone.now() - execution.started_at).total_seconds()
 
         # 5. Evaluate with Gemini (pass/fail)
+        # Prefer raw bytes (always available) over URLs (may fail with Supabase)
+        eval_screenshots = (
+            screenshot_bytes_list if screenshot_bytes_list else screenshot_urls
+        )
+
         execution.progress = 85
         execution.message = "Evaluating results with AI"
         execution.save(update_fields=["progress", "message", "updated_at"])
@@ -362,7 +383,7 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
         evaluation = evaluate_test_results(
             test_execution_id=str(execution.id),
             executed_steps=executed_steps,
-            screenshots=screenshot_urls,
+            screenshots=eval_screenshots,
             expected_behavior=execution.expected_behavior,
             url=execution.url,
         )
@@ -397,7 +418,9 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
 
         logger.info(
             "Pipeline completed for %s — success=%s, turns=%d",
-            execution.id, evaluation["success"], len(executed_steps),
+            execution.id,
+            evaluation["success"],
+            len(executed_steps),
         )
         return {
             "status": "completed",
@@ -408,7 +431,10 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
 
     except Exception as exc:
         logger.error(
-            "Pipeline failed for %s: %s", test_execution_id, exc, exc_info=True,
+            "Pipeline failed for %s: %s",
+            test_execution_id,
+            exc,
+            exc_info=True,
         )
         execution.status = "failed"
         execution.completed_at = timezone.now()

@@ -8,6 +8,7 @@ from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from core.models import Test
 from services.recorder import (
@@ -32,7 +33,7 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
 class RecorderStartView(APIView):
     """Start a recorder session with Browserbase."""
 
-    authentication_classes = [CsrfExemptSessionAuthentication]
+    authentication_classes = [JWTAuthentication, CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -64,7 +65,7 @@ class RecorderStartView(APIView):
 class RecorderLiveViewView(APIView):
     """Get live view URL for recorder session."""
 
-    authentication_classes = [CsrfExemptSessionAuthentication]
+    authentication_classes = [JWTAuthentication, CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
     def get(self, request, session_id: str):
@@ -91,7 +92,7 @@ class RecorderLiveViewView(APIView):
 class RecorderStartRecordingView(APIView):
     """Start recording user interactions in the browser."""
 
-    authentication_classes = [CsrfExemptSessionAuthentication]
+    authentication_classes = [JWTAuthentication, CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
     def post(self, request, session_id: str):
@@ -129,7 +130,7 @@ class RecorderStartRecordingView(APIView):
 class RecorderToggleRecordingView(APIView):
     """Toggle recording on/off."""
 
-    authentication_classes = [CsrfExemptSessionAuthentication]
+    authentication_classes = [JWTAuthentication, CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
     def post(self, request, session_id: str):
@@ -156,7 +157,7 @@ class RecorderToggleRecordingView(APIView):
 class RecorderGetRecordedActionsView(APIView):
     """Get recorded actions from the queue."""
 
-    authentication_classes = [CsrfExemptSessionAuthentication]
+    authentication_classes = [JWTAuthentication, CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
     def get(self, request, session_id: str):
@@ -177,7 +178,7 @@ class RecorderGetRecordedActionsView(APIView):
 class RecorderEndView(APIView):
     """End a recorder session."""
 
-    authentication_classes = [CsrfExemptSessionAuthentication]
+    authentication_classes = [JWTAuthentication, CsrfExemptSessionAuthentication]
     permission_classes = [AllowAny]
 
     def post(self, request, session_id: str):
@@ -209,7 +210,7 @@ class RecorderSaveTestView(APIView):
     Uses summarize_steps (Gemini) for description; steps stored as JSON.
     """
 
-    authentication_classes = [CsrfExemptSessionAuthentication]
+    authentication_classes = [JWTAuthentication, CsrfExemptSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):

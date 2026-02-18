@@ -33,6 +33,7 @@ GRID_SIZE = 1000
 # Coordinate helpers
 # ------------------------------------------------------------------
 
+
 async def _viewport_size(page: Page) -> Tuple[int, int]:
     """Return (width, height) of the current viewport."""
     size = page.viewport_size
@@ -51,6 +52,7 @@ def _scale(x: int, y: int, vw: int, vh: int) -> Tuple[float, float]:
 # ------------------------------------------------------------------
 # Individual action handlers
 # ------------------------------------------------------------------
+
 
 async def _open_web_browser(page: Page, _args: Dict) -> Dict[str, Any]:
     """No-op — the browser is already open."""
@@ -219,6 +221,7 @@ _ACTION_MAP = {
 # Public API
 # ------------------------------------------------------------------
 
+
 async def execute_action(
     page: Page,
     action: Dict[str, Any],
@@ -285,13 +288,17 @@ async def execute_actions(
                 url = await screenshot_callback(page, idx + 1)
                 result["screenshot_url"] = url
             except Exception as exc:
-                logger.warning("Screenshot callback failed at step %d: %s", idx + 1, exc)
+                logger.warning(
+                    "Screenshot callback failed at step %d: %s", idx + 1, exc
+                )
 
         results.append(result)
 
         # Stop early on critical failure (navigation error, crash, etc.)
         if not result["success"] and action.get("name") in ("navigate",):
-            logger.error("Stopping execution after critical failure at step %d", idx + 1)
+            logger.error(
+                "Stopping execution after critical failure at step %d", idx + 1
+            )
             break
 
     return results

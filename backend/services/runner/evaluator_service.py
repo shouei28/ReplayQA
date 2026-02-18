@@ -75,6 +75,7 @@ def _build_prompt(
 # Response parsing helpers
 # ---------------------------------------------------------------------------
 
+
 def _determine_success(analysis: str) -> bool:
     upper = analysis.upper()
     if "RESULT: PASS" in upper or "RESULT:PASS" in upper:
@@ -105,6 +106,7 @@ def _count_passed_steps(analysis: str, total: int) -> int:
 def _download_screenshot(url: str) -> bytes:
     """Download screenshot from URL and return raw bytes."""
     import requests as _req
+
     resp = _req.get(url, timeout=10)
     resp.raise_for_status()
     return resp.content
@@ -175,7 +177,9 @@ def evaluate_test_results(
         elif isinstance(shot, str) and shot.startswith("http"):
             try:
                 img_bytes = _download_screenshot(shot)
-                parts.append(types.Part.from_bytes(data=img_bytes, mime_type="image/png"))
+                parts.append(
+                    types.Part.from_bytes(data=img_bytes, mime_type="image/png")
+                )
             except Exception as exc:
                 logger.warning("Failed to download screenshot %s: %s", shot, exc)
                 parts.append(types.Part(text=f"[Screenshot unavailable: {exc}]"))
@@ -199,7 +203,11 @@ def evaluate_test_results(
 
         logger.info(
             "Evaluation for %s: success=%s passed=%d/%d tokens=%d",
-            test_execution_id, success, passed, len(executed_steps), token_count,
+            test_execution_id,
+            success,
+            passed,
+            len(executed_steps),
+            token_count,
         )
 
         return {
@@ -210,7 +218,9 @@ def evaluate_test_results(
             "agent_output": analysis,
         }
     except Exception as exc:
-        logger.error("Gemini evaluation failed for %s: %s", test_execution_id, exc, exc_info=True)
+        logger.error(
+            "Gemini evaluation failed for %s: %s", test_execution_id, exc, exc_info=True
+        )
         return {
             "success": False,
             "passed_steps": 0,

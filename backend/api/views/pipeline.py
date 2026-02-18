@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # POST /run-pipeline
 # ---------------------------------------------------------------------------
 
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def run_pipeline(request):
@@ -69,7 +70,8 @@ def run_pipeline(request):
         total_used_sec = (
             TestExecution.objects.filter(user=user, status="completed")
             .aggregate(total=Sum("total_runtime_sec"))
-            .get("total") or 0
+            .get("total")
+            or 0
         )
         total_used_hours = total_used_sec / 3600
         if total_used_hours >= user.browser_hours_limit:
@@ -121,6 +123,7 @@ def run_pipeline(request):
 # GET /status/<test_execution_id>
 # ---------------------------------------------------------------------------
 
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_test_status(request, test_execution_id):
@@ -153,6 +156,7 @@ def get_test_status(request, test_execution_id):
 # ---------------------------------------------------------------------------
 # GET /results/<test_execution_id>
 # ---------------------------------------------------------------------------
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -207,6 +211,7 @@ def get_test_results(request, test_execution_id):
 # ---------------------------------------------------------------------------
 # GET /live-view/<test_execution_id>/
 # ---------------------------------------------------------------------------
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])

@@ -20,7 +20,7 @@ export default function TestsPage() {
     setLoadingTests(true);
     try {
       const data = await testsApi.list();
-      setTests(data.results ?? []);
+      setTests(Array.isArray(data) ? data : []);
     } catch {
       // API not available — use empty state
       setTests([]);
@@ -105,21 +105,19 @@ export default function TestsPage() {
       <div className="flex items-center gap-1 mb-6 border-b border-gray-200">
         <button
           onClick={() => setTab("tests")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            tab === "tests"
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === "tests"
               ? "border-gray-900 text-gray-900"
               : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
+            }`}
         >
           Tests
         </button>
         <button
           onClick={() => setTab("scheduled")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-            tab === "scheduled"
+          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === "scheduled"
               ? "border-gray-900 text-gray-900"
               : "border-transparent text-gray-500 hover:text-gray-700"
-          }`}
+            }`}
         >
           Scheduled
         </button>
