@@ -540,25 +540,22 @@ Access to XMLHttpRequest blocked by CORS policy
 **Solution:**
 - Add frontend URL to ALLOWED_ORIGINS in backend .env
 - Install django-cors-headers if not already installed
-```
-```
+
 # Operational use cases as of now:
  - Automate creating and running tests to verify student user workflows are working correctly after any site or app changes.
  - Simplify testing for developers with less experience in testing
  - Finding logical errors that weren’t caught during our testing.
 
-```
-```
 # ReplayQA Beta Release
 
 **Release Identifier (Git Tag):** `beta-release`
 
 To checkout the code for this specific beta release, run the following command in your terminal:
-```bash
+```
+bash
 git checkout beta-release
 ```
-```
-```
+
 # ReplayQA
 Making QA easier than ever
 
