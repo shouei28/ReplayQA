@@ -163,7 +163,7 @@ class TestRecorderSaveTestView:
             },
             format="json",
         )
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert "detail" in response.data
 
     def test_save_test_missing_name_returns_400(self):
