@@ -29,15 +29,15 @@ export default function TestsPage() {
     }
   }, []);
 
-  const fetchHistory = useCallback(async () => {
-    setLoadingHistory(true);
+  const fetchHistory = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoadingHistory(true);
     try {
       const data = await executionsApi.list();
       setExecutions(data.results ?? []);
     } catch {
       setExecutions([]);
     } finally {
-      setLoadingHistory(false);
+      if (showLoading) setLoadingHistory(false);
     }
   }, []);
 
@@ -45,6 +45,18 @@ export default function TestsPage() {
     fetchTests();
     fetchHistory();
   }, [fetchTests, fetchHistory]);
+
+  /* ---- Poll when any execution is running --------------------------------- */
+  const hasRunning = executions.some(
+    (e) => e.status === "running" || e.status === "pending"
+  );
+  useEffect(() => {
+    if (!hasRunning) return;
+    const interval = setInterval(() => {
+      fetchHistory(false); // silent refresh, no loading state
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [hasRunning, fetchHistory]);
 
   /* ---- Handlers ------------------------------------------------------ */
 
