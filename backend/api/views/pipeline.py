@@ -12,7 +12,6 @@ from rest_framework.response import Response
 
 from core.models import Test, TestExecution
 from core.serializers import TestExecutionSerializer, TestResultSerializer
-from core.tasks import run_test_execution
 
 logger = logging.getLogger(__name__)
 
@@ -105,18 +104,36 @@ def run_pipeline(request):
         status="pending",
     )
 
-    # --- Queue Celery task ------------------------------------------------
-    run_test_execution.delay(str(execution.id))
-    logger.info("Queued pipeline run %s for user %s", execution.id, user.username)
+    # --- Run synchronously (no Celery) ------------------------------------
+    try:
+        from services.runner.runner_service import execute_test
 
-    return Response(
-        {
-            "job_id": str(execution.id),
-            "message": "Pipeline started successfully",
-            "status": "pending",
-        },
-        status=status.HTTP_201_CREATED,
-    )
+        result = execute_test(str(execution.id))
+        exec_status = result.get("status", "completed")
+        logger.info(
+            "Pipeline run %s finished for user %s: %s",
+            execution.id,
+            user.username,
+            exec_status,
+        )
+        return Response(
+            {
+                "job_id": str(execution.id),
+                "message": "Test execution completed",
+                "status": exec_status,
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    except Exception as exc:
+        logger.exception("Pipeline run %s failed: %s", execution.id, exc)
+        return Response(
+            {
+                "job_id": str(execution.id),
+                "message": str(exc),
+                "status": "failed",
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 # ---------------------------------------------------------------------------
