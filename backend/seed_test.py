@@ -1,7 +1,8 @@
 """Seed script — run with: python manage.py shell < seed_test.py"""
 
 import json
-from core.models import User, Test
+
+from core.models import Test, User
 
 # Get or create a demo user
 user, created = User.objects.get_or_create(

@@ -51,8 +51,9 @@ def run_test_execution(self, test_execution_id):
         )
         # Mark the execution as failed so the frontend sees a terminal state.
         try:
-            from core.models import TestExecution
             from django.utils import timezone
+
+            from core.models import TestExecution
 
             execution = TestExecution.objects.get(id=test_execution_id)
             execution.status = "failed"

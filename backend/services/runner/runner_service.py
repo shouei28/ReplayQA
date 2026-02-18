@@ -31,21 +31,20 @@ from typing import Any, Dict, List
 
 from asgiref.sync import sync_to_async
 from django.utils import timezone
-from playwright.sync_api import sync_playwright
-
 from google.genai.types import Content, Part
+from playwright.sync_api import sync_playwright
 
 from core.models import TestExecution, TestResult
 from services.browser_slot_manager import get_slot_manager
+from services.runner.evaluator_service import evaluate_test_results
 from services.runner.gemini_cua_service import (
     MAX_CUA_STEPS,
-    SCREEN_WIDTH,
     SCREEN_HEIGHT,
+    SCREEN_WIDTH,
     execute_function_calls_sync,
     get_cua_client_and_config,
     get_function_responses,
 )
-from services.runner.evaluator_service import evaluate_test_results
 from services.runner.storage_service import upload_screenshot
 
 logger = logging.getLogger(__name__)
