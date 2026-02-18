@@ -541,6 +541,7 @@ Access to XMLHttpRequest blocked by CORS policy
 - Add frontend URL to ALLOWED_ORIGINS in backend .env
 - Install django-cors-headers if not already installed
 ```
+```
 # ReplayQA
 Making QA easier than ever
 
@@ -559,4 +560,4 @@ The goal is to reduce the time and effort required write and maintain testcases.
 # Living Document
 The link for the project's living document:
 https://docs.google.com/document/d/15oPi7MEKw8f-VNyCnYaS6Zs2bgq6pqCIovzq1Y4_FOE/edit?usp=sharing
-
+```
