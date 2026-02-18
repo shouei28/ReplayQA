@@ -134,11 +134,13 @@ def _run_cua_loop(
 
     executed_steps: List[Dict[str, Any]] = []
     screenshot_urls: List[str] = []
+    screenshot_bytes_list: List[bytes] = []  # raw bytes for evaluator
 
     # Take initial screenshot
     initial_screenshot = page.screenshot(type="png")
+    screenshot_bytes_list.append(initial_screenshot)
 
-    # Try to upload initial screenshot
+    # Try to upload initial screenshot (best-effort, not required)
     try:
         url = upload_screenshot(str(execution.id), 0, initial_screenshot)
         if url:
@@ -245,8 +247,9 @@ def _run_cua_loop(
 
         # Build function responses with new screenshot
         function_responses, screenshot_bytes = get_function_responses(page, results)
+        screenshot_bytes_list.append(screenshot_bytes)  # keep raw bytes for evaluator
 
-        # Upload screenshot
+        # Upload screenshot (best-effort, not required for evaluation)
         try:
             url = upload_screenshot(str(execution.id), turn, screenshot_bytes)
             if url:
@@ -279,6 +282,7 @@ def _run_cua_loop(
     return {
         "executed_steps": executed_steps,
         "screenshot_urls": screenshot_urls,
+        "screenshot_bytes": screenshot_bytes_list,
         "final_text": final_text,
     }
 
@@ -351,10 +355,14 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
 
         executed_steps = loop_result["executed_steps"]
         screenshot_urls = loop_result["screenshot_urls"]
+        screenshot_bytes_list = loop_result.get("screenshot_bytes", [])
 
         runtime = (timezone.now() - execution.started_at).total_seconds()
 
         # 5. Evaluate with Gemini (pass/fail)
+        # Prefer raw bytes (always available) over URLs (may fail with Supabase)
+        eval_screenshots = screenshot_bytes_list if screenshot_bytes_list else screenshot_urls
+
         execution.progress = 85
         execution.message = "Evaluating results with AI"
         execution.save(update_fields=["progress", "message", "updated_at"])
@@ -362,7 +370,7 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
         evaluation = evaluate_test_results(
             test_execution_id=str(execution.id),
             executed_steps=executed_steps,
-            screenshots=screenshot_urls,
+            screenshots=eval_screenshots,
             expected_behavior=execution.expected_behavior,
             url=execution.url,
         )
