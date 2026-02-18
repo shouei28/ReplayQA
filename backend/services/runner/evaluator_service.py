@@ -4,7 +4,7 @@ Evaluator Service — use Gemini to decide pass/fail from screenshots.
 Workflow:
 1. Receive executed_steps list + screenshot bytes/URLs.
 2. Build a multimodal prompt (text + images).
-3. Call Gemini 1.5 Pro and parse structured PASS/FAIL response.
+3. Call Gemini and parse structured PASS/FAIL response.
 """
 
 import base64
@@ -12,7 +12,8 @@ import logging
 import os
 from typing import Any, Dict, List
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 
@@ -92,34 +93,30 @@ def _count_passed_steps(analysis: str, total: int) -> int:
         idx = upper.find(marker)
         if idx == -1:
             continue
-        # Grab the text until the next "Step N:" or end
         end = upper.find(f"STEP {i + 1}:", idx) if i < total else len(upper)
         chunk = upper[idx:end]
         if any(kw in chunk for kw in ("PASS", "SUCCESS", "CORRECT", "COMPLETED")):
             passed += 1
-    # If parsing found nothing but overall passed, assume all passed
     if passed == 0 and _determine_success(analysis):
         passed = total
     return passed
 
 
-def _prepare_image_part(screenshot: Any) -> dict:
-    """Convert screenshot (bytes | base64 str | URL) to Gemini image part."""
-    if isinstance(screenshot, bytes):
-        data = base64.b64encode(screenshot).decode()
-    elif isinstance(screenshot, str) and screenshot.startswith("http"):
-        import requests as _req
-        data = base64.b64encode(_req.get(screenshot).content).decode()
-    elif isinstance(screenshot, str) and screenshot.startswith("data:image"):
-        data = screenshot.split(",", 1)[1]
-    else:
-        data = screenshot  # assume already base64
-    return {"mime_type": "image/png", "data": data}
+def _download_screenshot(url: str) -> bytes:
+    """Download screenshot from URL and return raw bytes."""
+    import requests as _req
+    resp = _req.get(url, timeout=10)
+    resp.raise_for_status()
+    return resp.content
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+# Use a simpler model for evaluation (CUA model requires ComputerUse tool)
+EVAL_MODEL = os.getenv("GEMINI_EVAL_MODEL", "gemini-2.0-flash")
+
 
 def evaluate_test_results(
     test_execution_id: str,
@@ -129,7 +126,7 @@ def evaluate_test_results(
     url: str = "",
 ) -> Dict[str, Any]:
     """
-    Evaluate test results using Gemini 1.5 Pro multimodal.
+    Evaluate test results using Gemini multimodal.
 
     Returns dict with keys:
         success (bool), passed_steps (int), explanation (str),
@@ -145,8 +142,7 @@ def evaluate_test_results(
             "agent_output": "",
         }
 
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-pro")
+    client = genai.Client(api_key=api_key)
 
     # Filter out empty screenshot entries
     valid_screenshots = [s for s in screenshots if s]
@@ -167,17 +163,35 @@ def evaluate_test_results(
         num_screenshots=len(valid_screenshots),
     )
 
-    # Build multimodal content list
-    content: list = [prompt]
+    # Build multimodal content parts
+    parts = [types.Part(text=prompt)]
+
     for idx, shot in enumerate(valid_screenshots):
-        content.append(f"\n--- Screenshot after step {idx + 1} ---")
-        content.append(_prepare_image_part(shot))
+        parts.append(types.Part(text=f"\n--- Screenshot after step {idx + 1} ---"))
+
+        # Handle different screenshot formats
+        if isinstance(shot, bytes):
+            parts.append(types.Part.from_bytes(data=shot, mime_type="image/png"))
+        elif isinstance(shot, str) and shot.startswith("http"):
+            try:
+                img_bytes = _download_screenshot(shot)
+                parts.append(types.Part.from_bytes(data=img_bytes, mime_type="image/png"))
+            except Exception as exc:
+                logger.warning("Failed to download screenshot %s: %s", shot, exc)
+                parts.append(types.Part(text=f"[Screenshot unavailable: {exc}]"))
+        elif isinstance(shot, str):
+            # Assume base64
+            img_bytes = base64.b64decode(shot)
+            parts.append(types.Part.from_bytes(data=img_bytes, mime_type="image/png"))
 
     try:
-        response = model.generate_content(content)
+        response = client.models.generate_content(
+            model=EVAL_MODEL,
+            contents=parts,
+        )
         analysis = response.text
         token_count = 0
-        if hasattr(response, "usage_metadata"):
+        if hasattr(response, "usage_metadata") and response.usage_metadata:
             token_count = getattr(response.usage_metadata, "total_token_count", 0)
 
         success = _determine_success(analysis)

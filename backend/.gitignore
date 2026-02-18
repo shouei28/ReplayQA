@@ -60,3 +60,5 @@ htmlcov/
 .pytest_cache/
 coverage.xml
 .coverage.*
+# Project virtualenv
+replayQA/
