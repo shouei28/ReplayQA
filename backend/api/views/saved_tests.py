@@ -88,9 +88,7 @@ def saved_test_detail(request, test_id):
     try:
         test = Test.objects.get(id=test_id, user=request.user)
     except Test.DoesNotExist:
-        return Response(
-            {"error": "Test not found"}, status=status.HTTP_404_NOT_FOUND
-        )
+        return Response({"error": "Test not found"}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == "GET":
         return Response(

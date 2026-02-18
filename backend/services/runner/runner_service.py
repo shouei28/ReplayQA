@@ -55,13 +55,16 @@ logger = logging.getLogger(__name__)
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _viewport_for_device(device: str) -> Dict[str, int]:
     if device == "mobile":
         return {"width": 375, "height": 667}
     return {"width": SCREEN_WIDTH, "height": SCREEN_HEIGHT}
 
 
-def _create_browser_session(device: str = "desktop", browser: str = "chrome") -> Dict[str, Any]:
+def _create_browser_session(
+    device: str = "desktop", browser: str = "chrome"
+) -> Dict[str, Any]:
     project_id = os.getenv("BROWSERBASE_PROJECT_ID", "")
     slot_mgr = get_slot_manager()
     slot_mgr.acquire_slot(device, browser)
@@ -95,6 +98,7 @@ def _release_slot(device: str = "desktop", browser: str = "chrome") -> None:
 # Build prompt from test steps
 # ---------------------------------------------------------------------------
 
+
 def _build_user_prompt(execution: TestExecution) -> str:
     """Build the initial prompt with all test context."""
     steps_text = ""
@@ -118,6 +122,7 @@ def _build_user_prompt(execution: TestExecution) -> str:
 # ---------------------------------------------------------------------------
 # Sync CUA agent loop (runs inside sync_playwright)
 # ---------------------------------------------------------------------------
+
 
 def _run_cua_loop(
     page,
@@ -181,14 +186,16 @@ def _run_cua_loop(
             )
         except Exception as exc:
             logger.error("Gemini CUA call failed at turn %d: %s", turn, exc)
-            executed_steps.append({
-                "step_number": turn,
-                "thought": f"Gemini API error: {exc}",
-                "action": {"name": "error"},
-                "status": "failed",
-                "error": str(exc),
-                "timestamp": datetime.now().isoformat(),
-            })
+            executed_steps.append(
+                {
+                    "step_number": turn,
+                    "thought": f"Gemini API error: {exc}",
+                    "action": {"name": "error"},
+                    "status": "failed",
+                    "error": str(exc),
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
             break
 
         candidate = response.candidates[0]
@@ -197,9 +204,7 @@ def _run_cua_loop(
         contents.append(candidate.content)
 
         # Check if there are function calls
-        has_function_calls = any(
-            part.function_call for part in candidate.content.parts
-        )
+        has_function_calls = any(part.function_call for part in candidate.content.parts)
 
         if not has_function_calls:
             # Model is done — extract text response
@@ -208,21 +213,21 @@ def _run_cua_loop(
             )
             logger.info("Agent finished at turn %d: %s", turn, final_text[:200])
 
-            executed_steps.append({
-                "step_number": turn,
-                "thought": final_text,
-                "action": {"name": "done"},
-                "instruction": "Test completed",
-                "type": "done",
-                "status": "passed",
-                "timestamp": datetime.now().isoformat(),
-            })
+            executed_steps.append(
+                {
+                    "step_number": turn,
+                    "thought": final_text,
+                    "action": {"name": "done"},
+                    "instruction": "Test completed",
+                    "type": "done",
+                    "status": "passed",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
             break
 
         # Extract thoughts from text parts
-        thoughts = [
-            part.text for part in candidate.content.parts if part.text
-        ]
+        thoughts = [part.text for part in candidate.content.parts if part.text]
         thought_text = " ".join(thoughts) if thoughts else ""
 
         # Extract action names for logging
@@ -233,7 +238,9 @@ def _run_cua_loop(
         ]
         logger.info(
             "Turn %d — thought: %s | actions: %s",
-            turn, thought_text[:100], action_names,
+            turn,
+            thought_text[:100],
+            action_names,
         )
 
         # Update progress with action info
@@ -267,17 +274,19 @@ def _run_cua_loop(
 
         # Record executed steps
         for fname, result in results:
-            executed_steps.append({
-                "step_number": turn,
-                "thought": thought_text,
-                "action": {"name": fname},
-                "instruction": thought_text,
-                "type": fname,
-                "status": "failed" if result.get("error") else "passed",
-                "error": result.get("error"),
-                "screenshot_url": screenshot_urls[-1] if screenshot_urls else "",
-                "timestamp": datetime.now().isoformat(),
-            })
+            executed_steps.append(
+                {
+                    "step_number": turn,
+                    "thought": thought_text,
+                    "action": {"name": fname},
+                    "instruction": thought_text,
+                    "type": fname,
+                    "status": "failed" if result.get("error") else "passed",
+                    "error": result.get("error"),
+                    "screenshot_url": screenshot_urls[-1] if screenshot_urls else "",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
 
     return {
         "executed_steps": executed_steps,
@@ -291,6 +300,7 @@ def _run_cua_loop(
 # Full pipeline (sync — called from Celery)
 # ---------------------------------------------------------------------------
 
+
 def execute_test(test_execution_id: str) -> Dict[str, Any]:
     """
     End-to-end test execution pipeline.
@@ -299,7 +309,9 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
     logger.info("Starting CUA pipeline for execution %s", test_execution_id)
 
     try:
-        execution = TestExecution.objects.select_related("user").get(id=test_execution_id)
+        execution = TestExecution.objects.select_related("user").get(
+            id=test_execution_id
+        )
     except TestExecution.DoesNotExist:
         logger.error("TestExecution %s not found", test_execution_id)
         return {"status": "error", "message": "TestExecution not found"}
@@ -361,7 +373,9 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
 
         # 5. Evaluate with Gemini (pass/fail)
         # Prefer raw bytes (always available) over URLs (may fail with Supabase)
-        eval_screenshots = screenshot_bytes_list if screenshot_bytes_list else screenshot_urls
+        eval_screenshots = (
+            screenshot_bytes_list if screenshot_bytes_list else screenshot_urls
+        )
 
         execution.progress = 85
         execution.message = "Evaluating results with AI"
@@ -405,7 +419,9 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
 
         logger.info(
             "Pipeline completed for %s — success=%s, turns=%d",
-            execution.id, evaluation["success"], len(executed_steps),
+            execution.id,
+            evaluation["success"],
+            len(executed_steps),
         )
         return {
             "status": "completed",
@@ -416,7 +432,10 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
 
     except Exception as exc:
         logger.error(
-            "Pipeline failed for %s: %s", test_execution_id, exc, exc_info=True,
+            "Pipeline failed for %s: %s",
+            test_execution_id,
+            exc,
+            exc_info=True,
         )
         execution.status = "failed"
         execution.completed_at = timezone.now()

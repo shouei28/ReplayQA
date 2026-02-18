@@ -57,9 +57,7 @@ def delete_test_result(request, test_result_id):
     except TestResult.DoesNotExist:
         # Also try to find by TestExecution ID
         try:
-            execution = TestExecution.objects.get(
-                id=test_result_id, user=request.user
-            )
+            execution = TestExecution.objects.get(id=test_result_id, user=request.user)
             # Delete associated result if it exists
             if hasattr(execution, "result"):
                 execution.result.delete()

@@ -33,7 +33,9 @@ def _get_supabase_client():
     url = os.getenv("SUPABASE_URL", "")
     key = os.getenv("SUPABASE_KEY", "")
     if not url or not key:
-        logger.warning("SUPABASE_URL / SUPABASE_KEY not set — screenshot storage disabled")
+        logger.warning(
+            "SUPABASE_URL / SUPABASE_KEY not set — screenshot storage disabled"
+        )
         _disabled = True
         return None
     return create_client(url, key)
@@ -72,7 +74,8 @@ def upload_screenshot(
     except Exception as exc:
         logger.warning(
             "Screenshot upload failed for %s: %s — disabling further uploads this worker",
-            path, exc,
+            path,
+            exc,
         )
         _disabled = True
         return ""
@@ -99,9 +102,7 @@ def delete_test_screenshots(test_execution_id: str, total_steps: int) -> None:
     if _disabled:
         return
     bucket = os.getenv("SUPABASE_BUCKET", "screenshots")
-    paths = [
-        f"{test_execution_id}/step_{i}.png" for i in range(1, total_steps + 1)
-    ]
+    paths = [f"{test_execution_id}/step_{i}.png" for i in range(1, total_steps + 1)]
     try:
         client = _get_supabase_client()
         if client is None:
@@ -109,4 +110,6 @@ def delete_test_screenshots(test_execution_id: str, total_steps: int) -> None:
         client.storage.from_(bucket).remove(paths)
         logger.info("Deleted %d screenshots for %s", len(paths), test_execution_id)
     except Exception as exc:
-        logger.warning("Failed to delete screenshots for %s: %s", test_execution_id, exc)
+        logger.warning(
+            "Failed to delete screenshots for %s: %s", test_execution_id, exc
+        )

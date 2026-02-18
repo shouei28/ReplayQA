@@ -30,6 +30,7 @@ SCREEN_HEIGHT = 720
 # Coordinate helpers (model outputs 0-999 normalised coords)
 # ---------------------------------------------------------------------------
 
+
 def denormalize_x(x: int, screen_width: int = SCREEN_WIDTH) -> int:
     return int(x / 1000 * screen_width)
 
@@ -42,15 +43,14 @@ def denormalize_y(y: int, screen_height: int = SCREEN_HEIGHT) -> int:
 # Execute function calls from model response via Playwright
 # ---------------------------------------------------------------------------
 
+
 def execute_function_calls_sync(candidate, page, screen_width, screen_height):
     """
     Extract function_call parts from the model response and execute them
     on the Playwright page.  Returns a list of (name, result_dict) tuples.
     """
     function_calls = [
-        part.function_call
-        for part in candidate.content.parts
-        if part.function_call
+        part.function_call for part in candidate.content.parts if part.function_call
     ]
 
     results: List[Tuple[str, Dict[str, Any]]] = []
@@ -130,7 +130,10 @@ def execute_function_calls_sync(candidate, page, screen_width, screen_height):
 
             elif fname == "search":
                 query = args.get("query", "")
-                page.goto(f"https://www.google.com/search?q={query}", wait_until="domcontentloaded")
+                page.goto(
+                    f"https://www.google.com/search?q={query}",
+                    wait_until="domcontentloaded",
+                )
 
             elif fname == "drag_and_drop":
                 sx = denormalize_x(args["start_x"], screen_width)
@@ -164,6 +167,7 @@ def execute_function_calls_sync(candidate, page, screen_width, screen_height):
 # ---------------------------------------------------------------------------
 # Build FunctionResponse parts with screenshot
 # ---------------------------------------------------------------------------
+
 
 def get_function_responses(page, results):
     """
@@ -199,6 +203,7 @@ def get_function_responses(page, results):
 # Build the Gemini CUA client + config
 # ---------------------------------------------------------------------------
 
+
 def get_cua_client_and_config():
     """Return a configured genai Client and GenerateContentConfig."""
     api_key = os.getenv("GEMINI_API_KEY")
@@ -206,7 +211,9 @@ def get_cua_client_and_config():
         raise RuntimeError("GEMINI_API_KEY is not configured")
 
     client = genai.Client(api_key=api_key)
-    model_name = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-computer-use-preview-10-2025")
+    model_name = os.getenv(
+        "GEMINI_MODEL_NAME", "gemini-2.5-computer-use-preview-10-2025"
+    )
 
     config = types.GenerateContentConfig(
         tools=[

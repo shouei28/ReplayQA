@@ -41,10 +41,14 @@ def run_test_execution(self, test_execution_id):
         from services.runner.runner_service import execute_test
 
         result = execute_test(test_execution_id)
-        logger.info("Celery task finished for %s — %s", test_execution_id, result.get("status"))
+        logger.info(
+            "Celery task finished for %s — %s", test_execution_id, result.get("status")
+        )
         return result
     except Exception as exc:
-        logger.error("Celery task failed for %s: %s", test_execution_id, exc, exc_info=True)
+        logger.error(
+            "Celery task failed for %s: %s", test_execution_id, exc, exc_info=True
+        )
         # Mark the execution as failed so the frontend sees a terminal state.
         try:
             from core.models import TestExecution
