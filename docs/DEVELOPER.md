@@ -50,7 +50,7 @@ python manage.py runserver
 
 # Terminal 2 - Frontend
 cd frontend
-npm start
+npm run dev
 
 # Terminal 3 - Celery worker
 cd backend
@@ -89,17 +89,42 @@ replayqa/
 │   │   ├── urls.py              # Root URL configuration
 │   │   └── celery.py            # Celery configuration
 │   ├── manage.py                # Django management script
-│   └── requirements.txt          # Python dependencies
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── components/         # React components
-│   │   ├── pages/              # Page-level components
-│   │   ├── services/           # API client services
-│   │   └── App.tsx
+│   └── requirements.txt         # Python dependencies
+├── frontend/                    # Next.js App Router (React + TypeScript)
+│   ├── app/                     # App Router pages and layouts
+│   │   ├── layout.tsx           # Root layout
+│   │   ├── page.tsx             # Home page
+│   │   ├── globals.css
+│   │   ├── admin/page.tsx
+│   │   ├── demo/page.tsx
+│   │   ├── login/page.tsx
+│   │   ├── recorder/page.tsx    # Standalone recorder
+│   │   ├── waitlist/page.tsx
+│   │   └── dashboard/           # Dashboard section
+│   │       ├── layout.tsx
+│   │       ├── overview/page.tsx
+│   │       ├── activity/page.tsx
+│   │       ├── scheduled/page.tsx
+│   │       ├── settings/page.tsx
+│   │       └── projects/[name]/ # Project detail (dynamic route)
+│   │           ├── page.tsx
+│   │           └── recorder/page.tsx
+│   ├── components/             # React components
+│   │   ├── ui/                  # Shadcn/UI primitives (optional)
+│   │   ├── dashboard/
+│   │   └── recorder.tsx
+│   ├── hooks/                   # Custom React hooks
+│   ├── lib/                     # Shared utilities
+│   │   ├── api.ts               # API client (recorder, auth, etc.)
+│   │   ├── types.ts
+│   │   └── utils.ts
+│   ├── public/assets/
 │   ├── package.json
-│   └── tsconfig.json
-├── docs/                       # Documentation
+│   ├── next.config.mjs
+│   ├── tsconfig.json
+│   ├── tailwind.config.ts
+│   └── components.json          # Shadcn config (optional)
+├── docs/                        # Documentation
 │   └── DEVELOPER.md
 ├── docker-compose.yml
 └── README.md
@@ -135,8 +160,9 @@ SECRET_KEY=your-secret-key-change-this-in-production
 DEBUG=True
 ALLOWED_HOSTS=localhost,127.0.0.1
 
-# External Services
+# External Services (recorder needs Browserbase)
 BROWSERBASE_API_KEY=bb_your_key_here
+BROWSERBASE_PROJECT_ID=your_project_id
 STAGEHAND_API_KEY=sh_your_key_here
 GEMINI_API_KEY=your_gemini_key_here
 
@@ -168,7 +194,7 @@ python manage.py createsuperuser
 python manage.py runserver
 ```
 
-### 2. Frontend Setup (React + TypeScript)
+### 2. Frontend Setup (Next.js + TypeScript)
 
 **Install dependencies:**
 ```bash
@@ -179,14 +205,14 @@ npm install
 **Configure environment variables:**
 Create `.env` file in `frontend/`:
 ```bash
-REACT_APP_API_URL=http://localhost:8000
-REACT_APP_ENV=development
+NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
 ```
 
 **Run development server:**
 ```bash
-npm start
+npm run dev
 ```
+Then open http://localhost:3000.
 
 ### 3. Redis Setup
 
@@ -229,7 +255,7 @@ celery -A replayqa beat -l info
 
 ```
 ┌─────────────┐
-│   Client    │ (React)
+│   Client    │ (Next.js / React)
 │  (Browser)  │
 └──────┬──────┘
        │ HTTP/REST
@@ -333,6 +359,14 @@ All endpoints are currently placeholder implementations. See `api/views/` direct
 - `PUT /api/saved-tests/<test_id>` - Update saved test
 - `DELETE /api/saved-tests/<test_id>` - Delete saved test
 
+### Recorder (Browserbase session + recording)
+- `POST /api/v1/recorder/start` - Start a recorder session (returns `session_id`, `connect_url`, `live_view_url`)
+- `GET /api/v1/recorder/<session_id>/live-view?browserbase_session_id=...` - Get live view URL
+- `POST /api/v1/recorder/<session_id>/start-recording` - Start recording (body: `browserbase_session_id`, optional `connect_url`, `url`)
+- `GET /api/v1/recorder/<session_id>/recorded-actions` - Get and clear recorded actions queue
+- `POST /api/v1/recorder/<session_id>/toggle-recording` - Toggle recording on/off (body: `enabled`)
+- `POST /api/v1/recorder/<session_id>/end` - End session (body: `browserbase_session_id`)
+
 ### Other
 - `GET /api/auth/me` - Get current user profile
 - `POST /api/auth/logout` - Logout
@@ -340,6 +374,8 @@ All endpoints are currently placeholder implementations. See `api/views/` direct
 - `GET /api/screenshot/<test_result_id>/<step>` - Serve screenshots
 - `GET /api/live-view/<test_execution_id>/` - Get live view URL
 - `GET /api/health` - Health check
+
+Note: API may be mounted at `/api/` or `/api/v1/` depending on project URL config. Frontend `lib/api.ts` uses `NEXT_PUBLIC_API_URL` (default `http://127.0.0.1:8000/api/v1`).
 
 ## Database Management
 
@@ -368,32 +404,105 @@ python manage.py seed_data
 
 ## Testing
 
-**Run tests:**
+## Running Tests Locally
+
+### Backend Tests (Pytest)
+
 ```bash
+cd backend
+
+# Install pytest
+pip install pytest pytest-django pytest-cov
+
 # Run all tests
 pytest
 
-# Run specific test file
-pytest backend/tests/test_runner_service.py
-
 # Run with coverage
-pytest --cov=core --cov-report=html
+pytest --cov=core --cov=api
 
-# Run only fast tests (exclude integration)
-pytest -m "not integration"
+# Run specific file
+pytest tests/test_models.py
+
+# Run specific test
+pytest tests/test_models.py::test_create_user
 ```
 
-**Run tests:**
+### Frontend Tests (Jest)
+
 ```bash
+cd frontend
+
 # Run all tests
 npm test
 
-# Run with coverage
-npm test -- --coverage
+# Lint
+npm run lint
 
-# Run specific test file
-npm test MyComponent.test.tsx
+# Run specific file
+npm test FileName.test.tsx
+
+# Watch mode (re-run on file changes)
+npm test -- --watch
 ```
+
+## CI/CD with GitHub Actions
+
+**On every push and pull request:**
+- Backend tests (pytest)
+- Frontend linting (eslint)
+- Frontend tests (jest)
+- Code coverage (80%)
+
+### Setup Instructions
+
+1. Ensure `.github/workflows/tests.yml` is setup in your repository
+2. Push changes to GitHub
+3. Tests run automatically on every push
+
+View results in GitHub Actions tab.
+
+## Adding New Tests
+
+### Backend Test
+
+1. Create file in `backend/tests/` with `test_` prefix
+2. Write test function with `test_` prefix
+3. Use `@pytest.mark.django_db` for database tests
+4. Run with `pytest`
+
+Example:
+```python
+import pytest
+from core.models import User
+
+@pytest.mark.django_db
+def test_my_feature():
+    user = User.objects.create_user(
+        username='test',
+        email='test@example.com',
+        password='pass'
+    )
+    assert user.username == 'test'
+```
+
+### Frontend Test
+
+1. Create file in `frontend/src/` ending with `.test.tsx`
+2. Import render and screen from testing-library
+3. Write test with `test()` function
+4. Run with `npm test`
+
+Example:
+```typescript
+import { render, screen } from '@testing-library/react';
+import MyComponent from './MyComponent';
+
+test('renders component', () => {
+  render(<MyComponent />);
+  expect(screen.getByText('Hello')).toBeInTheDocument();
+});
+```
+Add Jest or Vitest and `npm test` when tests are added.
 
 ## Code Style Guidelines
 

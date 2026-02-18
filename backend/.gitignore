@@ -19,6 +19,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.python-version
 
 # Virtual Environment
 venv/
@@ -57,3 +58,7 @@ celerybeat.pid
 .coverage
 htmlcov/
 .pytest_cache/
+coverage.xml
+.coverage.*
+# Project virtualenv
+replayQA/
