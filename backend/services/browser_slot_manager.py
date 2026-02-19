@@ -75,16 +75,23 @@ class BrowserSlotManager:
             browser: Browser type (for logging)
         """
         with self.condition:
+            added_to_queue = False
             # Wait until a slot is available
             while self.available_slots <= 0:
-                print(
-                    f"[SLOT MANAGER] {device}/{browser}: Waiting for available slot (queue position: {len(self.queue) + 1})"
-                )
-                self.queue.append((device, browser))
+                if not added_to_queue:
+                    queue_pos = len(self.queue) + 1
+                    print(
+                        f"[SLOT MANAGER] {device}/{browser}: Waiting for available slot (queue position: {queue_pos})"
+                    )
+                    self.queue.append((device, browser))
+                    added_to_queue = True
                 self.condition.wait()
-                # Remove from queue if we were queued
-                if self.queue and self.queue[0] == (device, browser):
-                    self.queue.popleft()
+                # Re-check: with notify_all, another thread may have acquired the slot
+                # If available_slots still <= 0, we loop and wait again
+
+            # We have a slot - remove our entry from queue (we're at front)
+            if self.queue:
+                self.queue.popleft()
 
             # Acquire slot
             self.available_slots -= 1
@@ -107,8 +114,8 @@ class BrowserSlotManager:
             print(
                 f"[SLOT MANAGER] {device}/{browser}: Released slot ({self.active_sessions}/{self.max_concurrent} active, {len(self.queue)} queued)"
             )
-            # Notify waiting threads
-            self.condition.notify()
+            # Notify all waiting threads so they can compete for the slot (avoids starvation)
+            self.condition.notify_all()
 
     def create_session_with_retry(
         self,
