@@ -36,8 +36,6 @@ cd backend
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-python manage.py migrate
-python manage.py createsuperuser
 
 # Frontend setup
 cd ../frontend
@@ -50,15 +48,8 @@ python manage.py runserver
 
 # Terminal 2 - Frontend
 cd frontend
-npm start
+npm run dev
 
-# Terminal 3 - Celery worker
-cd backend
-celery -A replayqa worker -l info
-
-# Terminal 4 - Celery beat (for scheduled tasks)
-cd backend
-celery -A replayqa beat -l info
 ```
 
 ---
@@ -153,22 +144,12 @@ CELERY_BROKER_URL=redis://localhost:6379/0
 CELERY_RESULT_BACKEND=redis://localhost:6379/0
 ```
 
-**Run migrations:**
-```bash
-python manage.py migrate
-```
-
-**Create superuser:**
-```bash
-python manage.py createsuperuser
-```
-
-**Run development server:**
+**2. Run Backend server:**
 ```bash
 python manage.py runserver
 ```
 
-### 2. Frontend Setup (React + TypeScript)
+### 3. Frontend Setup (React + TypeScript)
 
 **Install dependencies:**
 ```bash
@@ -183,43 +164,6 @@ REACT_APP_API_URL=http://localhost:8000
 REACT_APP_ENV=development
 ```
 
-**Run development server:**
-```bash
-npm start
-```
-
-### 3. Redis Setup
-
-**Using Docker:**
-```bash
-docker run -d -p 6379:6379 redis:alpine
-```
-
-**Or install locally:**
-- macOS: `brew install redis && brew services start redis`
-- Ubuntu: `sudo apt install redis-server && sudo systemctl start redis`
-- Windows: Use Docker or WSL
-
-### 4. Celery Setup
-
-**Start Celery worker:**
-```bash
-cd backend
-celery -A replayqa worker -l info
-```
-
-**Start Celery beat (for scheduled tasks):**
-```bash
-celery -A replayqa beat -l info
-```
-
-### 5. Database Setup (PostgreSQL)
-
-
-**Supabase**:
-1. Create project at https://supabase.com
-2. Get connection string from Settings > Database
-3. Update `DATABASE_URL` in `.env`
 
 ---
 

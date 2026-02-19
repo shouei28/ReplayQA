@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import type { Test } from "@/lib/types";
 import {
   Play,
@@ -18,6 +19,7 @@ interface TestListProps {
   onRun: (test: Test) => void;
   onDelete: (test: Test) => void;
   onRunSelected: (ids: string[]) => void;
+  onTestClick?: (test: Test) => void;
 }
 
 const PAGE_SIZE = 10;
@@ -28,6 +30,7 @@ export default function TestList({
   onRun,
   onDelete,
   onRunSelected,
+  onTestClick,
 }: TestListProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
@@ -105,9 +108,12 @@ export default function TestList({
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors">
+          <Link
+            href="/dashboard/recorder"
+            className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors"
+          >
             Record New Test
-          </button>
+          </Link>
           <button className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg bg-white hover:bg-gray-50 transition-colors">
             Define New Test
           </button>
@@ -132,11 +138,15 @@ export default function TestList({
                 type="checkbox"
                 checked={selectedIds.has(test.id)}
                 onChange={() => toggleOne(test.id)}
+                onClick={(e) => e.stopPropagation()}
                 className="w-4 h-4 rounded border-gray-300 accent-indigo-600 cursor-pointer"
               />
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
+              {/* Info - clickable to view/edit */}
+              <div
+                className={`flex-1 min-w-0 ${onTestClick ? "cursor-pointer hover:bg-gray-50/80 -mx-2 px-2 py-1 rounded" : ""}`}
+                onClick={onTestClick ? () => onTestClick(test) : undefined}
+              >
                 <p className="text-sm font-semibold text-gray-900 truncate">
                   {test.test_name}
                 </p>
@@ -155,6 +165,7 @@ export default function TestList({
                 href={test.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
                 className="flex items-center gap-1 text-xs text-gray-500 hover:text-indigo-600 transition-colors whitespace-nowrap"
               >
                 <ExternalLink size={12} />
@@ -162,7 +173,10 @@ export default function TestList({
               </a>
 
               {/* Actions */}
-              <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div
+                className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <button
                   onClick={() => onRun(test)}
                   className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
@@ -172,8 +186,9 @@ export default function TestList({
                   Run
                 </button>
                 <button
+                  onClick={onTestClick ? () => onTestClick(test) : undefined}
                   className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-                  title="Settings"
+                  title="Edit test"
                 >
                   <Settings2 size={14} />
                 </button>
