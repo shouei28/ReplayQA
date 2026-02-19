@@ -100,6 +100,21 @@ export default function TestsPage() {
     }
   }
 
+  async function handleDeleteExecution(executionId: string) {
+    if (!confirm("Delete this test execution from history?")) return;
+    try {
+      await executionsApi.delete(executionId);
+      setExecutions((prev) => prev.filter((e) => e.id !== executionId));
+      toast({ title: "Execution deleted" });
+    } catch (err) {
+      toast({
+        title: "Delete failed",
+        description: String(err),
+        variant: "destructive",
+      });
+    }
+  }
+
   async function handleRunSelected(ids: string[]) {
     const selected = tests.filter((t) => ids.includes(t.id));
     for (const test of selected) {
@@ -148,6 +163,7 @@ export default function TestsPage() {
           <TestHistoryList
             executions={executions}
             loading={loadingHistory}
+            onDelete={handleDeleteExecution}
           />
         </>
       )}
