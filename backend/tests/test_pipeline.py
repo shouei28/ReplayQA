@@ -9,7 +9,6 @@ from rest_framework.test import APIClient
 
 from core.models import TestExecution
 
-
 # Ensure the mock module is available for patching even when
 # the real runner_service can't be imported (e.g. missing deps in CI).
 if "services.runner.runner_service" not in sys.modules:
