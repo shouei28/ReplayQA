@@ -109,43 +109,24 @@ def run_pipeline(request):
         status="pending",
     )
 
-    # --- Run synchronously (no Celery) ------------------------------------
-    if execute_test is None:
-        return Response(
-            {
-                "job_id": str(execution.id),
-                "message": "Runner service not available",
-                "status": "pending",
-            },
-            status=status.HTTP_201_CREATED,
-        )
-    try:
-        result = execute_test(str(execution.id))
-        exec_status = result.get("status", "completed")
-        logger.info(
-            "Pipeline run %s finished for user %s: %s",
-            execution.id,
-            user.username,
-            exec_status,
-        )
-        return Response(
-            {
-                "job_id": str(execution.id),
-                "message": "Test execution completed",
-                "status": exec_status,
-            },
-            status=status.HTTP_201_CREATED,
-        )
-    except Exception as exc:
-        logger.exception("Pipeline run %s failed: %s", execution.id, exc)
-        return Response(
-            {
-                "job_id": str(execution.id),
-                "message": str(exc),
-                "status": "failed",
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    # --- Dispatch to Celery worker ----------------------------------------
+    from services.runner.tasks import run_test_execution_task
+
+    run_test_execution_task.delay(str(execution.id))
+
+    logger.info(
+        "Pipeline run %s queued for user %s",
+        execution.id,
+        user.username,
+    )
+    return Response(
+        {
+            "job_id": str(execution.id),
+            "message": "Test execution queued",
+            "status": "pending",
+        },
+        status=status.HTTP_201_CREATED,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -229,12 +210,59 @@ def get_test_results(request, test_execution_id):
         result = execution.result  # OneToOneField reverse accessor
     except Exception:
         return Response(
-            {"detail": "Test completed but result record is missing."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            {"detail": "No result record found for this execution."},
+            status=status.HTTP_404_NOT_FOUND,
         )
 
     serializer = TestResultSerializer(result)
     return Response(serializer.data)
+
+
+# ---------------------------------------------------------------------------
+# GET /recording/<test_execution_id>/
+# ---------------------------------------------------------------------------
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_recording(request, test_execution_id):
+    """
+    GET /recording/<test_execution_id>/
+    Retrieve rrweb recording events for a completed test execution.
+    """
+    try:
+        execution = TestExecution.objects.get(id=test_execution_id, user=request.user)
+    except TestExecution.DoesNotExist:
+        return Response(
+            {"detail": "Test execution not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    bb_session_id = execution.browserbase_session_id
+    if not bb_session_id:
+        return Response(
+            {"detail": "No browser session was recorded for this execution."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        import os
+
+        from browserbase import Browserbase
+
+        bb = Browserbase(api_key=os.environ.get("BROWSERBASE_API_KEY"))
+        recording = bb.sessions.recording.retrieve(bb_session_id)
+        events = [
+            {"type": r.type, "timestamp": r.timestamp, "data": r.data}
+            for r in recording
+        ]
+        return Response({"events": events})
+    except Exception as exc:
+        logger.error("Failed to get recording for session %s: %s", bb_session_id, exc)
+        return Response(
+            {"detail": "Could not retrieve recording."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -282,17 +310,25 @@ def get_live_view(request, test_execution_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Fetch live-view URL from Browserbase
-    try:
-        from services.recorder.session_service import get_live_view_url
+    # Prefer cached live view URL (set by runner at session creation time)
+    live_url = execution.live_view_url
 
-        live_url = get_live_view_url(bb_session_id)
-    except Exception as exc:
-        logger.error("Failed to get live view URL: %s", exc)
-        return Response(
-            {"detail": "Could not retrieve live view URL."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    if not live_url:
+        # Fallback: try fetching from Browserbase API
+        try:
+            from services.recorder.session_service import get_live_view_url
+
+            live_url = get_live_view_url(bb_session_id)
+        except Exception as exc:
+            logger.warning("Live view URL not available yet: %s", exc)
+            return Response(
+                {
+                    "live_view_url": None,
+                    "detail": "Live view URL not available yet.",
+                    "session_id": bb_session_id,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
 
     return Response(
         {

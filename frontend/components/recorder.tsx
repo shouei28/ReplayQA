@@ -131,10 +131,15 @@ export function Recorder() {
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ url: url.trim(), device, browser }),
       });
+    
       if (!res.ok) {
+        if (res.status === 429) {
+          throw new Error("AI Quota Reached. Please try again later.");
+        }
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Failed to start session");
       }
+      
       const data = await res.json();
       setSessionId(data.session_id);
       setBrowserbaseSessionId(data.browserbase_session_id);
@@ -415,6 +420,9 @@ export function Recorder() {
         }),
       });
       if (!res.ok) {
+        if (res.status === 429) {
+          throw new Error("AI Quota Reached. Please try again later.");
+        }
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || err.detail || `Save failed: ${res.status}`);
       }
