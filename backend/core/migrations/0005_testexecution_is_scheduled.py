@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("core", "0002_testexecution_browser_and_more"),
+        ("core", "0004_merge_20260224_2238"),
     ]
 
     operations = [
