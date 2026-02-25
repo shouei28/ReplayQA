@@ -5,10 +5,15 @@ on:
     branches:
       - dev
       - main
+      - CITEST
   pull_request:
     branches:
       - dev
       - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -143,6 +148,8 @@ jobs:
       - name: Check code formatting with black
         working-directory: ./backend
         run: |
+          black --version
+          black --diff . || true
           black --check .
 
       - name: Check import sorting with isort
