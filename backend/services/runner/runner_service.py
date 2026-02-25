@@ -36,6 +36,7 @@ from playwright.sync_api import sync_playwright
 
 from core.models import TestExecution, TestResult
 from services.browser_slot_manager import get_slot_manager
+from services.recorder.session_service import get_live_view_url
 from services.runner.evaluator_service import evaluate_test_results
 from services.runner.gemini_cua_service import (
     MAX_CUA_STEPS,
@@ -334,7 +335,15 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
             execution.browser or "chrome",
         )
         execution.browserbase_session_id = session_info["session_id"]
-        execution.save(update_fields=["browserbase_session_id", "updated_at"])
+
+        # Fetch live view URL immediately (session is guaranteed active here)
+        try:
+            live_url = get_live_view_url(session_info["session_id"])
+            execution.live_view_url = live_url
+        except Exception as exc:
+            logger.warning("Could not fetch live view URL: %s", exc)
+
+        execution.save(update_fields=["browserbase_session_id", "live_view_url", "updated_at"])
 
         # 2. Connect Playwright via CDP
         execution.message = "Connecting Playwright"
@@ -386,6 +395,7 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
             screenshots=eval_screenshots,
             expected_behavior=execution.expected_behavior,
             url=execution.url,
+            original_steps=execution.steps,
         )
 
         # 6. Persist TestResult

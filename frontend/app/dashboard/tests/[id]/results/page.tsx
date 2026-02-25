@@ -23,6 +23,7 @@ export default function TestResultsPage({
   const [execution, setExecution] = useState<TestExecution | null>(null);
   const [result, setResult] = useState<TestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [liveViewUrl, setLiveViewUrl] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -30,6 +31,7 @@ export default function TestResultsPage({
       setExecution(exec);
 
       if (exec.status === "completed" || exec.status === "failed") {
+        setLiveViewUrl(null); // Clear live view when done
         try {
           const res = await pipelineApi.results(id);
           setResult(res);
@@ -37,10 +39,22 @@ export default function TestResultsPage({
           // Results may not exist for failed executions
         }
       }
+
+      // Fetch live view URL when running
+      if (exec.status === "running" && !liveViewUrl) {
+        try {
+          const lv = await pipelineApi.liveView(id);
+          if (lv.live_view_url) {
+            setLiveViewUrl(lv.live_view_url);
+          }
+        } catch {
+          // Live view may not be available yet (session still creating)
+        }
+      }
     } catch (err) {
       setError(String(err));
     }
-  }, [id]);
+  }, [id, liveViewUrl]);
 
   useEffect(() => {
     fetchData();
@@ -128,6 +142,28 @@ export default function TestResultsPage({
         </div>
       )}
 
+      {/* Live View iframe */}
+      {liveViewUrl && (execution.status === "running" || execution.status === "pending") && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+            </span>
+            <h2 className="text-sm font-semibold text-gray-900">Live Browser View</h2>
+          </div>
+          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <iframe
+              src={liveViewUrl}
+              className="w-full bg-gray-900"
+              style={{ height: "500px" }}
+              allow="clipboard-read; clipboard-write"
+              title="Live browser view"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Error message */}
       {execution.status === "failed" && execution.error_message && (
         <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl">
@@ -160,11 +196,14 @@ export default function TestResultsPage({
             />
           </div>
 
-          {/* Step-by-step results */}
+          {/* Agent execution log */}
           <div className="mt-8">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">
-              Step-by-Step Analysis
+            <h2 className="text-lg font-bold text-gray-900 mb-1">
+              Agent Execution Log
             </h2>
+            <p className="text-xs text-gray-500 mb-4">
+              Individual actions the AI agent performed to complete your test steps.
+            </p>
             <div className="space-y-3">
               {result.executed_steps.map((step, i) => (
                 <div
@@ -183,7 +222,7 @@ export default function TestResultsPage({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">
-                      Step {step.step_number}: {step.instruction || step.type}
+                      Turn {i + 1}: {step.instruction || step.type}
                     </p>
                     {step.error && (
                       <p className="text-xs text-red-500 mt-1 font-mono">

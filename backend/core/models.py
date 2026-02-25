@@ -113,6 +113,7 @@ class TestExecution(models.Model):
     steps = models.JSONField()  # Instructions/steps as JSON
     expected_behavior = models.TextField(blank=True)
     browserbase_session_id = models.CharField(max_length=255, null=True, blank=True)
+    live_view_url = models.URLField(max_length=1024, null=True, blank=True)
     device = models.CharField(max_length=20, default="desktop")
     browser = models.CharField(max_length=20, default="chrome")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
