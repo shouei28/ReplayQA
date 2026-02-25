@@ -19,6 +19,8 @@ from .views import (
     run_pipeline,
     saved_test_detail,
     saved_tests_list_create,
+    schedule_delete,
+    schedule_list,
 )
 from .views.recorder import (
     RecorderEndView,
@@ -56,6 +58,9 @@ urlpatterns = [
     path("auth/register", register, name="auth-register"),
     path("auth/me", get_auth_me, name="auth-me"),
     path("auth/logout", auth_logout, name="auth-logout"),
+    # Schedules (django-celery-beat): GET/POST /schedules, DELETE /schedules/<id>
+    path("schedules", schedule_list, name="schedule-list"),
+    path("schedules/<int:schedule_id>", schedule_delete, name="schedule-delete"),
     # Admin
     path("admin", admin_management, name="admin-management"),
     # Live View

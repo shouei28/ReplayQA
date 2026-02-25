@@ -65,6 +65,7 @@ class TestExecutionSerializer(serializers.ModelSerializer):
             "started_at",
             "completed_at",
             "error_message",
+            "is_scheduled",
             "created_at",
             "updated_at",
         ]
@@ -77,6 +78,7 @@ class TestExecutionSerializer(serializers.ModelSerializer):
             "started_at",
             "completed_at",
             "error_message",
+            "is_scheduled",
             "created_at",
             "updated_at",
         ]

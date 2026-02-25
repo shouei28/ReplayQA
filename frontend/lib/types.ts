@@ -46,6 +46,7 @@ export interface TestExecution {
   started_at: string | null;
   completed_at: string | null;
   error_message: string | null;
+  is_scheduled?: boolean;
   created_at: string;
   updated_at: string;
 }

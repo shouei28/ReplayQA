@@ -37,6 +37,7 @@ def list_tests(request):
             "started_at": e.started_at.isoformat() if e.started_at else None,
             "completed_at": e.completed_at.isoformat() if e.completed_at else None,
             "error_message": e.error_message,
+            "is_scheduled": getattr(e, "is_scheduled", False),
             "created_at": e.created_at.isoformat(),
             "updated_at": e.updated_at.isoformat(),
         }
