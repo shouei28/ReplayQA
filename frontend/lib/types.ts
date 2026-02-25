@@ -21,11 +21,14 @@ export interface Test {
 }
 
 export interface StepDefinition {
+  kind?: string;
   type?: string;
   instruction?: string;
   selector?: string;
   value?: string;
   url?: string;
+  method?: string;
+  target_coordinate?: string;
 }
 
 export interface TestExecution {
@@ -42,6 +45,7 @@ export interface TestExecution {
   total_runtime_sec: number | null;
   started_at: string | null;
   completed_at: string | null;
+  browserbase_session_id: string | null;
   error_message: string | null;
   created_at: string;
   updated_at: string;

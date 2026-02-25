@@ -144,6 +144,9 @@ export const pipelineApi = {
       device: string;
       browser: string;
     }>(`live-view/${executionId}/`),
+
+  recording: (executionId: string) =>
+    apiFetch<{ events: unknown[] }>(`recording/${executionId}/`),
 };
 
 /* ------------------------------------------------------------------ */

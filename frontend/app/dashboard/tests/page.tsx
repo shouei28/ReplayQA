@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import TestList from "@/components/dashboard/TestList";
 import TestHistoryList from "@/components/dashboard/TestHistoryList";
+import TestDetailModal from "@/components/dashboard/TestDetailModal";
 import { testsApi, pipelineApi, executionsApi } from "@/lib/api";
 import type { Test, TestExecution } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -12,6 +13,8 @@ export default function TestsPage() {
   const [executions, setExecutions] = useState<TestExecution[]>([]);
   const [loadingTests, setLoadingTests] = useState(true);
   const [loadingHistory, setLoadingHistory] = useState(true);
+  const [selectedTest, setSelectedTest] = useState<Test | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const { toast } = useToast();
 
   /* ---- Fetch data ---------------------------------------------------- */
@@ -100,11 +103,39 @@ export default function TestsPage() {
     }
   }
 
+  async function handleDeleteExecution(executionId: string) {
+    if (!confirm("Delete this test execution from history?")) return;
+    try {
+      await executionsApi.delete(executionId);
+      setExecutions((prev) => prev.filter((e) => e.id !== executionId));
+      toast({ title: "Execution deleted" });
+    } catch (err) {
+      toast({
+        title: "Delete failed",
+        description: String(err),
+        variant: "destructive",
+      });
+    }
+  }
+
   async function handleRunSelected(ids: string[]) {
     const selected = tests.filter((t) => ids.includes(t.id));
     for (const test of selected) {
       await handleRun(test);
     }
+  }
+
+  function handleTestClick(test: Test) {
+    setSelectedTest(test);
+    setDetailModalOpen(true);
+  }
+
+  async function handleSaveTest(testId: string, updates: Partial<Test>) {
+    await testsApi.update(testId, updates);
+    setTests((prev) =>
+      prev.map((t) => (t.id === testId ? { ...t, ...updates } : t))
+    );
+    toast({ title: "Test updated" });
   }
 
   /* ---- Tabs ---------------------------------------------------------- */
@@ -143,11 +174,23 @@ export default function TestsPage() {
             onRun={handleRun}
             onDelete={handleDelete}
             onRunSelected={handleRunSelected}
+            onTestClick={handleTestClick}
+          />
+
+          <TestDetailModal
+            test={selectedTest}
+            open={detailModalOpen}
+            onClose={() => {
+              setDetailModalOpen(false);
+              setSelectedTest(null);
+            }}
+            onSave={handleSaveTest}
           />
 
           <TestHistoryList
             executions={executions}
             loading={loadingHistory}
+            onDelete={handleDeleteExecution}
           />
         </>
       )}
