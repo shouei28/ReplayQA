@@ -13,11 +13,6 @@ from rest_framework.response import Response
 from core.models import Test, TestExecution
 from core.serializers import TestExecutionSerializer, TestResultSerializer
 
-try:
-    from services.runner.runner_service import execute_test
-except ImportError:
-    execute_test = None
-
 logger = logging.getLogger(__name__)
 
 

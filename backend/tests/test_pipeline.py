@@ -62,10 +62,9 @@ class TestRunPipeline:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "steps" in response.data
 
-    @patch("api.views.pipeline.execute_test")
-    def test_success_returns_201(self, mock_execute, auth_client):
-        """Valid payload creates execution and returns 201."""
-        mock_execute.return_value = {"status": "completed"}
+    @patch("services.runner.tasks.run_test_execution_task.delay")
+    def test_success_returns_201(self, mock_delay, auth_client):
+        """Valid payload creates execution, queues task, and returns 201."""
         response = auth_client.post(
             "/api/run-pipeline",
             {
@@ -77,24 +76,25 @@ class TestRunPipeline:
         )
         assert response.status_code == status.HTTP_201_CREATED
         assert "job_id" in response.data
-        assert response.data["status"] == "completed"
+        assert response.data["status"] == "pending"
         assert TestExecution.objects.count() == 1
+        mock_delay.assert_called_once()
 
-    @patch("api.views.pipeline.execute_test")
-    def test_execution_failure_returns_500(self, mock_execute, auth_client):
-        """When execute_test raises, returns 500 with error message."""
-        mock_execute.side_effect = Exception("Browserbase failed")
+    @patch("services.runner.tasks.run_test_execution_task.delay")
+    def test_celery_task_receives_execution_id(self, mock_delay, auth_client):
+        """The Celery task is dispatched with the correct execution ID."""
         response = auth_client.post(
             "/api/run-pipeline",
             {
                 "url": "https://example.com",
-                "description": "Failing test",
+                "description": "Dispatch test",
                 "steps": [{"type": "goto", "url": "https://example.com"}],
             },
             format="json",
         )
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert response.data["status"] == "failed"
+        assert response.status_code == status.HTTP_201_CREATED
+        job_id = response.data["job_id"]
+        mock_delay.assert_called_once_with(job_id)
 
     def test_browser_hours_limit_exceeded_returns_403(self, auth_client, user):
         """When user exceeds browser-hours limit, returns 403."""
@@ -120,8 +120,8 @@ class TestRunPipeline:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    @patch("api.views.pipeline.execute_test")
-    def test_linked_test_not_found_returns_400(self, mock_execute, auth_client):
+    @patch("services.runner.tasks.run_test_execution_task.delay")
+    def test_linked_test_not_found_returns_400(self, mock_delay, auth_client):
         """Linking to a non-existent test_id returns 400."""
         response = auth_client.post(
             "/api/run-pipeline",
