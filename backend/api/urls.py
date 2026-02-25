@@ -11,6 +11,7 @@ from .views import (
     delete_test_result,
     get_auth_me,
     get_live_view,
+    get_recording,
     get_screenshot,
     get_test_results,
     get_test_status,
@@ -63,6 +64,8 @@ urlpatterns = [
     path("schedules/<int:schedule_id>", schedule_delete, name="schedule-delete"),
     # Admin
     path("admin", admin_management, name="admin-management"),
+    # Recording
+    path("recording/<uuid:test_execution_id>/", get_recording, name="recording"),
     # Live View
     path("live-view/<uuid:test_execution_id>/", get_live_view, name="live-view"),
     # Recorder endpoints (simple recorder, no agent execution)

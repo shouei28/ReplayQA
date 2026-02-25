@@ -25,25 +25,28 @@ _PROMPT_TEMPLATE = """You are a QA test evaluator. Analyse the web-application t
 
 **Test URL:** {url}
 
-**Steps Executed:**
-{steps_text}
+**Original Test Steps (what the user intended):**
+{original_steps_text}
+
+**Agent Execution Log (what the AI agent actually did):**
+{execution_log}
 
 **Expected Behaviour:**
 {expected_behavior}
 
-**Screenshots Provided:** {num_screenshots} (one after each step, in order)
+**Screenshots Provided:** {num_screenshots} (captured during execution, in order)
 
 **Your Task:**
-1. Examine every screenshot in order and compare it with the step that was just executed.
-2. For each step decide if the action completed successfully.
+1. Map the agent's execution log to the original test steps.
+2. For each ORIGINAL test step, decide if the agent successfully completed it.
 3. Decide if the **overall** test PASSED or FAILED based on whether the final state matches the expected behaviour.
 
 **Respond in EXACTLY this format (no markdown fences):**
 RESULT: PASS or FAIL
 
 STEP ANALYSIS:
-Step 1: <one-line verdict>
-Step 2: <one-line verdict>
+Step 1: <one-line verdict for original test step 1>
+Step 2: <one-line verdict for original test step 2>
 ...
 
 EXPLANATION:
@@ -52,20 +55,30 @@ EXPLANATION:
 
 
 def _build_prompt(
+    original_steps: List[Dict[str, Any]],
     executed_steps: List[Dict[str, Any]],
     expected_behavior: str,
     url: str,
     num_screenshots: int,
 ) -> str:
-    steps_lines = []
+    # Format original test steps
+    original_lines = []
+    for i, step in enumerate(original_steps, 1):
+        instr = step.get("instruction", step.get("value", "unknown"))
+        method = step.get("method", step.get("kind", ""))
+        original_lines.append(f"{i}. [{method}] {instr}")
+
+    # Format CUA execution log
+    exec_lines = []
     for i, step in enumerate(executed_steps, 1):
         instr = step.get("instruction") or step.get("type") or "unknown"
         status = step.get("status", "unknown")
-        steps_lines.append(f"{i}. {instr}  (runtime status: {status})")
+        exec_lines.append(f"  Turn {i}: {instr} (status: {status})")
 
     return _PROMPT_TEMPLATE.format(
         url=url,
-        steps_text="\n".join(steps_lines),
+        original_steps_text="\n".join(original_lines),
+        execution_log="\n".join(exec_lines),
         expected_behavior=expected_behavior or "Not specified",
         num_screenshots=num_screenshots,
     )
@@ -126,6 +139,7 @@ def evaluate_test_results(
     screenshots: List[Any],
     expected_behavior: str,
     url: str = "",
+    original_steps: List[Dict[str, Any]] | None = None,
 ) -> Dict[str, Any]:
     """
     Evaluate test results using Gemini multimodal.
@@ -158,7 +172,12 @@ def evaluate_test_results(
             "agent_output": "",
         }
 
+    # Use original test steps as the basis for evaluation
+    steps_for_eval = original_steps if original_steps else executed_steps
+    num_eval_steps = len(steps_for_eval)
+
     prompt = _build_prompt(
+        original_steps=steps_for_eval,
         executed_steps=executed_steps,
         expected_behavior=expected_behavior,
         url=url,
@@ -199,14 +218,14 @@ def evaluate_test_results(
             token_count = getattr(response.usage_metadata, "total_token_count", 0)
 
         success = _determine_success(analysis)
-        passed = _count_passed_steps(analysis, len(executed_steps))
+        passed = _count_passed_steps(analysis, num_eval_steps)
 
         logger.info(
             "Evaluation for %s: success=%s passed=%d/%d tokens=%d",
             test_execution_id,
             success,
             passed,
-            len(executed_steps),
+            num_eval_steps,
             token_count,
         )
 
