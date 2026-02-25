@@ -2,14 +2,24 @@
 Tests for pipeline execution views (run_pipeline, get_test_status, get_test_results, get_live_view).
 """
 
+import sys
 import uuid
-from unittest.mock import patch
+from types import ModuleType
+from unittest.mock import MagicMock, patch
 
 import pytest
 from rest_framework import status
 from rest_framework.test import APIClient
 
 from core.models import TestExecution
+
+
+# Ensure the mock module is available for patching even when
+# the real runner_service can't be imported (e.g. missing deps in CI).
+if "services.runner.runner_service" not in sys.modules:
+    sys.modules["services.runner.runner_service"] = ModuleType(
+        "services.runner.runner_service"
+    )
 
 
 @pytest.mark.django_db
@@ -209,7 +219,10 @@ class TestGetLiveView:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "not been created" in response.data["detail"]
 
-    @patch("services.recorder.session_service.get_live_view_url", return_value="https://live.bb.com")
+    @patch(
+        "services.recorder.session_service.get_live_view_url",
+        return_value="https://live.bb.com",
+    )
     def test_running_with_bb_session_returns_url(
         self, mock_live_view, auth_client, execution
     ):

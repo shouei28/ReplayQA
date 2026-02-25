@@ -74,9 +74,7 @@ class TestDeleteTestResult:
         response = auth_client.delete(f"/api/{uuid.uuid4()}")
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    def test_delete_other_user_execution_returns_404(
-        self, auth_client, other_user
-    ):
+    def test_delete_other_user_execution_returns_404(self, auth_client, other_user):
         """Cannot delete another user's execution."""
         other_exec = TestExecution.objects.create(
             user=other_user,
