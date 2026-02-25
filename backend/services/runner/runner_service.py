@@ -343,7 +343,9 @@ def execute_test(test_execution_id: str) -> Dict[str, Any]:
         except Exception as exc:
             logger.warning("Could not fetch live view URL: %s", exc)
 
-        execution.save(update_fields=["browserbase_session_id", "live_view_url", "updated_at"])
+        execution.save(
+            update_fields=["browserbase_session_id", "live_view_url", "updated_at"]
+        )
 
         # 2. Connect Playwright via CDP
         execution.message = "Connecting Playwright"
