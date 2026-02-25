@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { eventWithTime } from "@rrweb/types";
 
 interface Props {
   events: unknown[];
@@ -21,7 +22,7 @@ export function RecordingPlayer({ events }: Props) {
       new mod.default({
         target: container,
         props: {
-          events,
+          events: events as eventWithTime[],
           width: 800,
           height: 450,
           autoPlay: false,
