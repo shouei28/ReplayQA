@@ -104,36 +104,24 @@ def run_pipeline(request):
         status="pending",
     )
 
-    # --- Run synchronously (no Celery) ------------------------------------
-    try:
-        from services.runner.runner_service import execute_test
+    # --- Dispatch to Celery worker ----------------------------------------
+    from services.runner.tasks import run_test_execution_task
 
-        result = execute_test(str(execution.id))
-        exec_status = result.get("status", "completed")
-        logger.info(
-            "Pipeline run %s finished for user %s: %s",
-            execution.id,
-            user.username,
-            exec_status,
-        )
-        return Response(
-            {
-                "job_id": str(execution.id),
-                "message": "Test execution completed",
-                "status": exec_status,
-            },
-            status=status.HTTP_201_CREATED,
-        )
-    except Exception as exc:
-        logger.exception("Pipeline run %s failed: %s", execution.id, exc)
-        return Response(
-            {
-                "job_id": str(execution.id),
-                "message": str(exc),
-                "status": "failed",
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    run_test_execution_task.delay(str(execution.id))
+
+    logger.info(
+        "Pipeline run %s queued for user %s",
+        execution.id,
+        user.username,
+    )
+    return Response(
+        {
+            "job_id": str(execution.id),
+            "message": "Test execution queued",
+            "status": "pending",
+        },
+        status=status.HTTP_201_CREATED,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -270,17 +258,25 @@ def get_live_view(request, test_execution_id):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Fetch live-view URL from Browserbase
-    try:
-        from services.recorder.session_service import get_live_view_url
+    # Prefer cached live view URL (set by runner at session creation time)
+    live_url = execution.live_view_url
 
-        live_url = get_live_view_url(bb_session_id)
-    except Exception as exc:
-        logger.error("Failed to get live view URL: %s", exc)
-        return Response(
-            {"detail": "Could not retrieve live view URL."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+    if not live_url:
+        # Fallback: try fetching from Browserbase API
+        try:
+            from services.recorder.session_service import get_live_view_url
+
+            live_url = get_live_view_url(bb_session_id)
+        except Exception as exc:
+            logger.warning("Live view URL not available yet: %s", exc)
+            return Response(
+                {
+                    "live_view_url": None,
+                    "detail": "Live view URL not available yet.",
+                    "session_id": bb_session_id,
+                },
+                status=status.HTTP_202_ACCEPTED,
+            )
 
     return Response(
         {
