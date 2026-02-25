@@ -72,7 +72,7 @@ class TestRunPipeline:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "steps" in response.data
 
-    @patch("services.runner.runner_service.execute_test")
+    @patch("services.runner.runner_service.execute_test", create=True)
     def test_success_returns_201(self, mock_execute, auth_client):
         """Valid payload creates execution and returns 201."""
         mock_execute.return_value = {"status": "completed"}
@@ -90,7 +90,7 @@ class TestRunPipeline:
         assert response.data["status"] == "completed"
         assert TestExecution.objects.count() == 1
 
-    @patch("services.runner.runner_service.execute_test")
+    @patch("services.runner.runner_service.execute_test", create=True)
     def test_execution_failure_returns_500(self, mock_execute, auth_client):
         """When execute_test raises, returns 500 with error message."""
         mock_execute.side_effect = Exception("Browserbase failed")
@@ -130,7 +130,7 @@ class TestRunPipeline:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    @patch("services.runner.runner_service.execute_test")
+    @patch("services.runner.runner_service.execute_test", create=True)
     def test_linked_test_not_found_returns_400(self, mock_execute, auth_client):
         """Linking to a non-existent test_id returns 400."""
         response = auth_client.post(
