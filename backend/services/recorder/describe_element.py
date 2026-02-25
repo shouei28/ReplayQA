@@ -2,10 +2,12 @@
 Describe element from screenshot: uses Gemini vision to generate a short description
 for unlabeled elements (e.g. 'menu icon' instead of 'button element').
 """
+
 import os
 from typing import Optional
 
 DEFAULT_DESCRIBE_MODEL = "gemini-2.0-flash"
+
 
 def _build_describe_prompt(selector: str, action_type: str) -> str:
     """Build the prompt for structured action description with context clues."""
@@ -23,7 +25,7 @@ def _build_describe_prompt(selector: str, action_type: str) -> str:
         f"Try to follow a template similar to: (action) the (adjective (optional)) (element name/identifier) (element type), (position or other context clues)\n\n"
         "**Fields:**\n"
         f"- action: Use '{verb}' (the verb for this interaction type)\n"
-        "- adjective: Adjective to describe the element (e.g. black, grey, curcular) this is optional\n" 
+        "- adjective: Adjective to describe the element (e.g. black, grey, curcular) this is optional\n"
         "- element name/identifier: Short label for the element (e.g. 'search', 'settings', 'hamburger menu', 'close')\n"
         "- element type: Element type (button, link, icon, dropdown, text field, checkbox, SVG icon, etc.)\n"
         "- position: Where it is on the page (e.g. top-right of header, left sidebar, bottom navigation bar) this is optional. Keep in mind the picture is cropped so please describe position relative to other elements in the picture\n\n"
@@ -60,12 +62,16 @@ def describe_element_from_screenshot(
         print("[QUALTY DESCRIBE] Failed: google-genai not available")
         return None
 
-    api_key = api_key or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    api_key = (
+        api_key or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+    )
     if not api_key:
         print("[QUALTY DESCRIBE] Failed: no API key configured")
         return None
 
-    model = model_name or os.environ.get("GEMINI_DESCRIBE_MODEL", DEFAULT_DESCRIBE_MODEL)
+    model = model_name or os.environ.get(
+        "GEMINI_DESCRIBE_MODEL", DEFAULT_DESCRIBE_MODEL
+    )
     client = genai.Client(api_key=api_key)
     prompt = _build_describe_prompt(selector, action_type)
 
@@ -77,7 +83,9 @@ def describe_element_from_screenshot(
                     role="user",
                     parts=[
                         types.Part(text=prompt),
-                        types.Part.from_bytes(data=screenshot_bytes, mime_type=mime_type),
+                        types.Part.from_bytes(
+                            data=screenshot_bytes, mime_type=mime_type
+                        ),
                     ],
                 )
             ],
@@ -90,7 +98,11 @@ def describe_element_from_screenshot(
         return None
 
     text = ""
-    if resp.candidates and resp.candidates[0].content and resp.candidates[0].content.parts:
+    if (
+        resp.candidates
+        and resp.candidates[0].content
+        and resp.candidates[0].content.parts
+    ):
         text = (resp.candidates[0].content.parts[0].text or "").strip()
 
     if not text:

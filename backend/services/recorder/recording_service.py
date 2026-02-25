@@ -139,9 +139,7 @@ def start_recording(
                 if initial_url:
                     # Use domcontentloaded for faster init: DOM ready sooner, recorder active earlier.
                     # networkidle can add several seconds on heavy pages; we only need DOM for recording.
-                    page.goto(
-                        initial_url, wait_until="domcontentloaded", timeout=60000
-                    )
+                    page.goto(initial_url, wait_until="domcontentloaded", timeout=60000)
 
                 recorder_script = build_recorder_script(session_id)
                 # Use add_init_script so the recorder runs on every navigation (CDP Page.addScriptToEvaluateOnNewDocument).
