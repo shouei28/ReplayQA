@@ -41,6 +41,7 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
     let hoverUIChanged = false;
     let elementsAddedAfterHover = [];  // Track elements that appeared after hover
     const HOVER_UI_CHANGE_DELAY = 300;  // Delay to detect UI changes after hover
+    const HOVER_MIN_DURATION_MS = 4000;  // Only record hover if hovered for at least 3 seconds
     
     function getXPath(element) {
         // Prefer element's own ID
@@ -103,13 +104,115 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
         const label = element.labels?.[0]?.textContent || '';
         const ariaLabel = element.getAttribute('aria-label') || '';
         const id = element.id || '';
+        const title = element.getAttribute('title') || '';
         
         if (ariaLabel) return ariaLabel;
         if (label) return label;
         if (placeholder) return placeholder;
         if (text) return text;
         if (id) return `${tag} with id "${id}"`;
+        if (title) return title;
         return `${tag} element`;
+    }
+
+    function getTestId(element) {
+        if (!element || !element.getAttribute) return null;
+        return (
+            element.getAttribute('data-testid') ||
+            element.getAttribute('data-test-id') ||
+            element.getAttribute('data-test') ||
+            element.getAttribute('data-qa') ||
+            null
+        );
+    }
+
+    function compactObject(obj) {
+        if (!obj || typeof obj !== 'object') return obj;
+        const out = {};
+        Object.keys(obj).forEach((key) => {
+            const value = obj[key];
+            if (value === null || value === undefined) return;
+            if (typeof value === 'string' && value.trim() === '') return;
+            if (Array.isArray(value) && value.length === 0) return;
+            if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) return;
+            out[key] = value;
+        });
+        return out;
+    }
+
+    function normalizeText(value) {
+        return (value || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function inferRole(element) {
+        if (!element || !element.getAttribute) return null;
+        const explicit = element.getAttribute('role');
+        if (explicit) return explicit;
+        const tag = (element.tagName || '').toLowerCase();
+        if (tag === 'a') return 'link';
+        if (tag === 'button') return 'button';
+        if (tag === 'input') return 'textbox';
+        if (tag === 'select') return 'listbox';
+        if (tag === 'textarea') return 'textbox';
+        return null;
+    }
+
+    function getActionTarget(element) {
+        if (!element || !element.closest) return element;
+        // Keep this selector aligned with selector_resolver.py candidate extraction.
+        return (
+            element.closest('a,button,input,select,textarea,[role],[tabindex],[onclick],[contenteditable="true"]') ||
+            element
+        );
+    }
+
+    function getElementHint(element) {
+        if (!element || !element.tagName) {
+            return null;
+        }
+        const rawText = normalizeText(element.innerText || element.textContent || '');
+        const text = rawText ? rawText.substring(0, 120) : null;
+        const className = typeof element.className === 'string'
+            ? normalizeText(element.className).substring(0, 120)
+            : null;
+
+        const hint = {
+            id: element.id || null,
+            tag: element.tagName.toLowerCase(),
+            role: inferRole(element),
+            text: text,
+            type: element.getAttribute ? (element.getAttribute('type') || null) : null,
+            title: element.getAttribute ? (element.getAttribute('title') || null) : null,
+            test_id: getTestId(element),
+            name_attr: element.getAttribute ? (element.getAttribute('name') || null) : null,
+            aria_label: element.getAttribute ? (element.getAttribute('aria-label') || null) : null,
+            placeholder: element.getAttribute ? (element.getAttribute('placeholder') || null) : null,
+            href: element.getAttribute ? (element.getAttribute('href') || null) : null,
+            class_name: className,
+        };
+        const compactHint = compactObject(hint);
+        return Object.keys(compactHint).length > 0 ? compactHint : null;
+    }
+
+    function buildSelectorBundle(rawTarget, resolvedTarget, selector, description) {
+        const elementHint = getElementHint(resolvedTarget || rawTarget);
+        const rawTargetHint = getElementHint(rawTarget);
+        const hasDifferentRawTarget =
+            rawTarget &&
+            resolvedTarget &&
+            rawTarget !== resolvedTarget &&
+            JSON.stringify(rawTargetHint) !== JSON.stringify(elementHint);
+        return compactObject({
+            element_hint: elementHint,
+            raw_target_hint: hasDifferentRawTarget ? rawTargetHint : null,
+            selector: selector || null,
+            description: description || null,
+            recorded_at_url: window.location.href || null,
+        });
+    }
+    
+    function isFallbackDescription(desc) {
+        return /^[a-z]+ element$/.test(desc);
     }
     
     function checkAndInsertScrollAction() {
@@ -146,6 +249,11 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
             method: 'scrollto',
             arguments: [],
             target_coordinate: targetCoordinate,
+            selector_bundle: compactObject({
+                selector: '/html/body',
+                description: `Scroll ${direction} to ${targetCoordinate}`,
+                recorded_at_url: window.location.href || null,
+            }),
             timestamp: Date.now()
         });
         
@@ -332,23 +440,39 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
     
     /**
      * Records the hover action and resets tracking state.
+     * Only records if hover duration >= HOVER_MIN_DURATION_MS (avoids false positives from quick pass-through).
      */
     function recordHoverAction() {
+        if (!lastHoveredElement || !lastHoverTime) return false;
+        const hoverDuration = Date.now() - lastHoverTime;
+        if (hoverDuration < HOVER_MIN_DURATION_MS) {
+            resetHoverTracking();
+            return false;
+        }
         const xpath = getXPath(lastHoveredElement);
         if (!xpath) {
             return false;
         }
         
         const description = getElementDescription(lastHoveredElement);
+        const rect = lastHoveredElement.getBoundingClientRect();
+        const centerX = Math.round(rect.left + rect.width / 2);
+        const centerY = Math.round(rect.top + rect.height / 2);
         
-        // Record hover action before the click
-        window.__qualty_actions.push({
+        const action = {
             selector: xpath,
             description: `Hover the ${description}`,
             method: 'hover',
             arguments: [],
+            selector_bundle: buildSelectorBundle(lastHoveredElement, lastHoveredElement, xpath, `Hover the ${description}`),
             timestamp: lastHoverTime
-        });
+        };
+        if (isFallbackDescription(description)) {
+            action.needs_llm_description = true;
+            action.raw_description = description;
+            action.cursor_position = { x: centerX, y: centerY, device_pixel_ratio: window.devicePixelRatio || 1 };
+        }
+        window.__qualty_actions.push(action);
         
         console.log('[QUALTY RECORDER] Hover action recorded for:', description);
         
@@ -552,8 +676,20 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
                     const target = e.target;
                     if (!target || target.tagName === 'HTML' || target.tagName === 'BODY') return;
                     
-                    // Use nearest button/link so we track the hoverable trigger, not nested svg/span
-                    const hoverTarget = target.closest('a, button, [role="button"], [role="menuitem"]') || target;
+                    // Use the same target selection policy as resolver candidate extraction.
+                    const hoverTarget = getActionTarget(target);
+                    
+                    // If we have a hover context with dropdown opened, and we're now over a dropdown child,
+                    // don't overwrite lastHoveredElement - keep the trigger (menu icon) for the hover action
+                    if (lastHoveredElement && elementsAddedAfterHover.length > 0) {
+                        for (let i = 0; i < elementsAddedAfterHover.length; i++) {
+                            const added = elementsAddedAfterHover[i];
+                            if (added && added.contains && added.contains(hoverTarget) && hoverTarget !== lastHoveredElement) {
+                                return;
+                            }
+                        }
+                    }
+                    
                     startHoverTracking(hoverTarget);
                 } catch (err) {
                     console.error('[QUALTY RECORDER] Error in mouseover handler:', err);
@@ -596,6 +732,7 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
                     description: 'Type "' + value + '" into the ' + description,
                     method: 'fill',
                     arguments: [value],
+                    selector_bundle: buildSelectorBundle(inputTarget, inputTarget, xpath, 'Type "' + value + '" into the ' + description),
                     timestamp: Date.now()
                 });
                 lastActionScrollX = window.scrollX || window.pageXOffset || 0;
@@ -633,10 +770,13 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
                     return;
                 }
                 
+                // Resolve to the same interactive target model used by selector resolver.
+                const descTarget = getActionTarget(target);
+                
                 // Flush any pending typing so it's recorded BEFORE this click (correct ordering)
                 flushPendingTyping();
                 
-                console.log('[QUALTY RECORDER] Click detected on:', target.tagName, target.className || 'no class');
+                console.log('[QUALTY RECORDER] Click detected on:', target.tagName, descTarget.tagName, target === descTarget ? '(same)' : '(closest button/link)');
                 
                 // Check for hover action before click (only if UI actually changed with new elements)
                 checkAndInsertHoverAction(target);
@@ -644,15 +784,15 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
                 // Check for scroll between this action and the previous one
                 checkAndInsertScrollAction();
                 
-                const xpath = getXPath(target);
+                const xpath = getXPath(descTarget);
                 if (!xpath) {
                     console.log('[QUALTY RECORDER] Click ignored - no xpath');
                     return;
                 }
                 
-                const description = getElementDescription(target);
+                const description = getElementDescription(descTarget);
                 const now = Date.now();
-                const isDoubleClick = lastClickTarget === target && (now - lastClickTime) < DOUBLE_CLICK_MS;
+                const isDoubleClick = lastClickTarget === descTarget && (now - lastClickTime) < DOUBLE_CLICK_MS;
                 
                 if (isDoubleClick) {
                     // Remove the previous single click and record a double-click instead
@@ -660,13 +800,20 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
                     if (actions.length > 0 && actions[actions.length - 1].method === 'click') {
                         actions.pop();
                     }
-                    window.__qualty_actions.push({
+                    const dblAction = {
                         selector: xpath,
                         description: `Double-click the ${description}`,
                         method: 'dblclick',
                         arguments: [],
+                        selector_bundle: buildSelectorBundle(target, descTarget, xpath, `Double-click the ${description}`),
                         timestamp: now
-                    });
+                    };
+                    if (isFallbackDescription(description)) {
+                        dblAction.needs_llm_description = true;
+                        dblAction.raw_description = description;
+                        dblAction.cursor_position = { x: e.clientX, y: e.clientY, device_pixel_ratio: window.devicePixelRatio || 1 };
+                    }
+                    window.__qualty_actions.push(dblAction);
                     console.log('[QUALTY RECORDER] Double-click action recorded');
                     lastClickTarget = null;
                     lastClickTime = 0;
@@ -676,11 +823,17 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
                         description: `Click the ${description}`,
                         method: 'click',
                         arguments: [],
+                        selector_bundle: buildSelectorBundle(target, descTarget, xpath, `Click the ${description}`),
                         timestamp: now
                     };
+                    if (isFallbackDescription(description)) {
+                        action.needs_llm_description = true;
+                        action.raw_description = description;
+                        action.cursor_position = { x: e.clientX, y: e.clientY, device_pixel_ratio: window.devicePixelRatio || 1 };
+                    }
                     window.__qualty_actions.push(action);
                     console.log('[QUALTY RECORDER] Click action recorded:', action.description);
-                    lastClickTarget = target;
+                    lastClickTarget = descTarget;
                     lastClickTime = now;
                 }
                 
@@ -707,21 +860,30 @@ RECORDER_INJECT_SCRIPT_TEMPLATE = """
                 const target = e.target;
                 if (!target || target.tagName === 'HTML' || target.tagName === 'BODY') return;
                 
+                const descTarget = getActionTarget(target);
+                
                 flushPendingTyping();
                 
                 checkAndInsertScrollAction();
                 
-                const xpath = getXPath(target);
+                const xpath = getXPath(descTarget);
                 if (!xpath) return;
                 
-                const description = getElementDescription(target);
-                window.__qualty_actions.push({
+                const description = getElementDescription(descTarget);
+                const rightAction = {
                     selector: xpath,
                     description: `Right-click the ${description}`,
                     method: 'rightclick',
                     arguments: [],
+                    selector_bundle: buildSelectorBundle(target, descTarget, xpath, `Right-click the ${description}`),
                     timestamp: Date.now()
-                });
+                };
+                if (isFallbackDescription(description)) {
+                    rightAction.needs_llm_description = true;
+                    rightAction.raw_description = description;
+                    rightAction.cursor_position = { x: e.clientX, y: e.clientY, device_pixel_ratio: window.devicePixelRatio || 1 };
+                }
+                window.__qualty_actions.push(rightAction);
                 
                 lastActionScrollX = window.scrollX || window.pageXOffset || 0;
                 lastActionScrollY = window.scrollY || window.pageYOffset || 0;
