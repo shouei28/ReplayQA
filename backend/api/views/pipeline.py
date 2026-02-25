@@ -242,6 +242,7 @@ def get_recording(request, test_execution_id):
 
     try:
         import os
+
         from browserbase import Browserbase
 
         bb = Browserbase(api_key=os.environ.get("BROWSERBASE_API_KEY"))
