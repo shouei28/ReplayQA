@@ -1,6 +1,8 @@
-import sys
+"""
+Tests for pipeline execution views (run_pipeline, get_test_status, get_test_results, get_live_view).
+"""
+
 import uuid
-from types import ModuleType
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -8,13 +10,6 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from core.models import TestExecution
-
-# Ensure the mock module is available for patching even when
-# the real runner_service can't be imported (e.g. missing deps in CI).
-if "services.runner.runner_service" not in sys.modules:
-    sys.modules["services.runner.runner_service"] = ModuleType(
-        "services.runner.runner_service"
-    )
 
 
 @pytest.mark.django_db
@@ -67,41 +62,37 @@ class TestRunPipeline:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "steps" in response.data
 
-    def test_success_returns_201(self, auth_client):
+    @patch("api.views.pipeline.execute_test")
+    def test_success_returns_201(self, mock_execute, auth_client):
         """Valid payload creates execution and returns 201."""
-        mock_mod = ModuleType("services.runner.runner_service")
-        mock_execute = MagicMock(return_value={"status": "completed"})
-        mock_mod.execute_test = mock_execute
-        with patch.dict(sys.modules, {"services.runner.runner_service": mock_mod}):
-            response = auth_client.post(
-                "/api/run-pipeline",
-                {
-                    "url": "https://example.com",
-                    "description": "My test desc",
-                    "steps": [{"type": "goto", "url": "https://example.com"}],
-                },
-                format="json",
-            )
+        mock_execute.return_value = {"status": "completed"}
+        response = auth_client.post(
+            "/api/run-pipeline",
+            {
+                "url": "https://example.com",
+                "description": "My test desc",
+                "steps": [{"type": "goto", "url": "https://example.com"}],
+            },
+            format="json",
+        )
         assert response.status_code == status.HTTP_201_CREATED
         assert "job_id" in response.data
         assert response.data["status"] == "completed"
         assert TestExecution.objects.count() == 1
 
-    def test_execution_failure_returns_500(self, auth_client):
+    @patch("api.views.pipeline.execute_test")
+    def test_execution_failure_returns_500(self, mock_execute, auth_client):
         """When execute_test raises, returns 500 with error message."""
-        mock_mod = ModuleType("services.runner.runner_service")
-        mock_execute = MagicMock(side_effect=Exception("Browserbase failed"))
-        mock_mod.execute_test = mock_execute
-        with patch.dict(sys.modules, {"services.runner.runner_service": mock_mod}):
-            response = auth_client.post(
-                "/api/run-pipeline",
-                {
-                    "url": "https://example.com",
-                    "description": "Failing test",
-                    "steps": [{"type": "goto", "url": "https://example.com"}],
-                },
-                format="json",
-            )
+        mock_execute.side_effect = Exception("Browserbase failed")
+        response = auth_client.post(
+            "/api/run-pipeline",
+            {
+                "url": "https://example.com",
+                "description": "Failing test",
+                "steps": [{"type": "goto", "url": "https://example.com"}],
+            },
+            format="json",
+        )
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert response.data["status"] == "failed"
 
@@ -129,7 +120,7 @@ class TestRunPipeline:
         )
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
-    @patch("services.runner.runner_service.execute_test", create=True)
+    @patch("api.views.pipeline.execute_test")
     def test_linked_test_not_found_returns_400(self, mock_execute, auth_client):
         """Linking to a non-existent test_id returns 400."""
         response = auth_client.post(

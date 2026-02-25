@@ -13,6 +13,11 @@ from rest_framework.response import Response
 from core.models import Test, TestExecution
 from core.serializers import TestExecutionSerializer, TestResultSerializer
 
+try:
+    from services.runner.runner_service import execute_test
+except ImportError:
+    execute_test = None
+
 logger = logging.getLogger(__name__)
 
 
@@ -105,9 +110,16 @@ def run_pipeline(request):
     )
 
     # --- Run synchronously (no Celery) ------------------------------------
+    if execute_test is None:
+        return Response(
+            {
+                "job_id": str(execution.id),
+                "message": "Runner service not available",
+                "status": "pending",
+            },
+            status=status.HTTP_201_CREATED,
+        )
     try:
-        from services.runner.runner_service import execute_test
-
         result = execute_test(str(execution.id))
         exec_status = result.get("status", "completed")
         logger.info(
