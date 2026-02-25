@@ -10,16 +10,19 @@ import {
   ExternalLink,
   FileText,
   Eye,
+  Trash2,
 } from "lucide-react";
 
 interface TestHistoryListProps {
   executions: TestExecution[];
   loading: boolean;
+  onDelete?: (executionId: string) => void;
 }
 
 export default function TestHistoryList({
   executions,
   loading,
+  onDelete,
 }: TestHistoryListProps) {
   function timeAgo(iso: string) {
     const diff = Date.now() - new Date(iso).getTime();
@@ -177,6 +180,17 @@ export default function TestHistoryList({
                   <Eye size={13} />
                   Live View
                 </Link>
+              )}
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={() => onDelete(exec.id)}
+                  className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-600 transition-colors whitespace-nowrap p-1 rounded hover:bg-red-50"
+                  aria-label="Delete test execution"
+                >
+                  <Trash2 size={13} />
+                  Delete
+                </button>
               )}
             </div>
           </div>

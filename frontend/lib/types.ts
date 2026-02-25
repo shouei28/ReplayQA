@@ -21,11 +21,14 @@ export interface Test {
 }
 
 export interface StepDefinition {
+  kind?: string;
   type?: string;
   instruction?: string;
   selector?: string;
   value?: string;
   url?: string;
+  method?: string;
+  target_coordinate?: string;
 }
 
 export interface TestExecution {
