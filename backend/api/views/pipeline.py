@@ -205,12 +205,58 @@ def get_test_results(request, test_execution_id):
         result = execution.result  # OneToOneField reverse accessor
     except Exception:
         return Response(
-            {"detail": "Test completed but result record is missing."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            {"detail": "No result record found for this execution."},
+            status=status.HTTP_404_NOT_FOUND,
         )
 
     serializer = TestResultSerializer(result)
     return Response(serializer.data)
+
+
+# ---------------------------------------------------------------------------
+# GET /recording/<test_execution_id>/
+# ---------------------------------------------------------------------------
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_recording(request, test_execution_id):
+    """
+    GET /recording/<test_execution_id>/
+    Retrieve rrweb recording events for a completed test execution.
+    """
+    try:
+        execution = TestExecution.objects.get(id=test_execution_id, user=request.user)
+    except TestExecution.DoesNotExist:
+        return Response(
+            {"detail": "Test execution not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    bb_session_id = execution.browserbase_session_id
+    if not bb_session_id:
+        return Response(
+            {"detail": "No browser session was recorded for this execution."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        import os
+        from browserbase import Browserbase
+
+        bb = Browserbase(api_key=os.environ.get("BROWSERBASE_API_KEY"))
+        recording = bb.sessions.recording.retrieve(bb_session_id)
+        events = [
+            {"type": r.type, "timestamp": r.timestamp, "data": r.data}
+            for r in recording
+        ]
+        return Response({"events": events})
+    except Exception as exc:
+        logger.error("Failed to get recording for session %s: %s", bb_session_id, exc)
+        return Response(
+            {"detail": "Could not retrieve recording."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
 
 # ---------------------------------------------------------------------------

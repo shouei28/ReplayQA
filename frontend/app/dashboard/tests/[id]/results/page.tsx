@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, use } from "react";
 import Link from "next/link";
 import { pipelineApi } from "@/lib/api";
 import type { TestExecution, TestResult } from "@/lib/types";
+import { RecordingPlayer } from "@/components/recording-player";
 import {
   ArrowLeft,
   CheckCircle2,
@@ -12,6 +13,8 @@ import {
   Loader2,
   ExternalLink,
   Image as ImageIcon,
+  Video,
+  X,
 } from "lucide-react";
 
 export default function TestResultsPage({
@@ -24,6 +27,11 @@ export default function TestResultsPage({
   const [result, setResult] = useState<TestResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [liveViewUrl, setLiveViewUrl] = useState<string | null>(null);
+
+  const [showRecording, setShowRecording] = useState(false);
+  const [recordingEvents, setRecordingEvents] = useState<unknown[]>([]);
+  const [loadingRecording, setLoadingRecording] = useState(false);
+  const [recordingError, setRecordingError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -67,6 +75,20 @@ export default function TestResultsPage({
     return () => clearInterval(interval);
   }, [fetchData, execution?.status]);
 
+  const handleViewRecording = async () => {
+    setLoadingRecording(true);
+    setRecordingError(null);
+    try {
+      const data = await pipelineApi.recording(id);
+      setRecordingEvents(data.events);
+      setShowRecording(true);
+    } catch {
+      setRecordingError("Could not load recording. The session may have expired.");
+    } finally {
+      setLoadingRecording(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="max-w-4xl">
@@ -90,6 +112,10 @@ export default function TestResultsPage({
       </div>
     );
   }
+
+  const canViewRecording =
+    (execution.status === "completed" || execution.status === "failed") &&
+    execution.browserbase_session_id;
 
   return (
     <div className="max-w-4xl">
@@ -116,15 +142,60 @@ export default function TestResultsPage({
           </div>
         </div>
 
-        {execution.total_runtime_sec != null && (
-          <div className="text-right">
-            <p className="text-2xl font-bold text-gray-900">
-              {execution.total_runtime_sec.toFixed(1)}s
-            </p>
-            <p className="text-xs text-gray-400">total runtime</p>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {canViewRecording && (
+            <button
+              onClick={handleViewRecording}
+              disabled={loadingRecording}
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors disabled:opacity-50"
+            >
+              {loadingRecording ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Video size={14} />
+              )}
+              {loadingRecording ? "Loading…" : "View Recording"}
+            </button>
+          )}
+          {execution.total_runtime_sec != null && (
+            <div className="text-right">
+              <p className="text-2xl font-bold text-gray-900">
+                {execution.total_runtime_sec.toFixed(1)}s
+              </p>
+              <p className="text-xs text-gray-400">total runtime</p>
+            </div>
+          )}
+        </div>
       </div>
+
+      {recordingError && (
+        <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
+          {recordingError}
+        </div>
+      )}
+
+      {/* Recording modal */}
+      {showRecording && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">Session Recording</h2>
+                <p className="text-xs text-gray-400 mt-0.5">{execution.test_name}</p>
+              </div>
+              <button
+                onClick={() => setShowRecording(false)}
+                className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-4 bg-gray-50 flex justify-center">
+              <RecordingPlayer events={recordingEvents} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Progress bar for running tests */}
       {(execution.status === "running" || execution.status === "pending") && (
