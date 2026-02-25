@@ -106,7 +106,11 @@ def schedule_list(request):
             pacific_dt = timezone.make_aware(utc_dt, timezone.utc).astimezone(USER_TZ)
             run_at = f"{pacific_dt.hour:02d}:{pacific_dt.minute:02d}"
             if cr.day_of_week != "*":
-                run_on_days = [int(x) for x in str(cr.day_of_week).split(",") if x.strip().isdigit()]
+                run_on_days = [
+                    int(x)
+                    for x in str(cr.day_of_week).split(",")
+                    if x.strip().isdigit()
+                ]
                 schedule_type = "weekly" if len(run_on_days) > 0 else "daily"
             else:
                 schedule_type = "daily"
@@ -114,27 +118,31 @@ def schedule_list(request):
             schedule_type = "once"
             cl = pt.clocked
             # clocked_time is stored in UTC in DB
-            run_on_date = cl.clocked_time.strftime("%Y-%m-%d") if cl.clocked_time else ""
+            run_on_date = (
+                cl.clocked_time.strftime("%Y-%m-%d") if cl.clocked_time else ""
+            )
             run_at = cl.clocked_time.strftime("%H:%M") if cl.clocked_time else "09:00"
 
         last_run = None
         if pt.last_run_at:
             last_run = pt.last_run_at.isoformat()
 
-        out.append({
-            "id": str(pt.id),
-            "test_id": str(test.id),
-            "test_name": test.test_name,
-            "schedule_type": schedule_type,
-            "run_on_days": run_on_days,
-            "run_on_date": run_on_date,
-            "run_at": run_at,
-            "repeat_every": repeat_every,
-            "repeat_unit": repeat_unit,
-            "name": pt.name or f"Scheduled: {test.test_name}",
-            "last_run_at": last_run,
-            "enabled": pt.enabled,
-        })
+        out.append(
+            {
+                "id": str(pt.id),
+                "test_id": str(test.id),
+                "test_name": test.test_name,
+                "schedule_type": schedule_type,
+                "run_on_days": run_on_days,
+                "run_on_date": run_on_date,
+                "run_at": run_at,
+                "repeat_every": repeat_every,
+                "repeat_unit": repeat_unit,
+                "name": pt.name or f"Scheduled: {test.test_name}",
+                "last_run_at": last_run,
+                "enabled": pt.enabled,
+            }
+        )
 
     return Response(out)
 
@@ -183,6 +191,7 @@ def schedule_create(request):
     base_name = task_name
     idx = 0
     from django_celery_beat.models import PeriodicTask
+
     while PeriodicTask.objects.filter(name=task_name).exists():
         idx += 1
         task_name = f"{base_name} #{idx}"
@@ -196,14 +205,18 @@ def schedule_create(request):
             )
         try:
             year, month, day = map(int, run_on_date.split("-")[:3])
-            clocked_time = _time_pacific_to_utc(hour, minute, date=datetime(year, month, day))
+            clocked_time = _time_pacific_to_utc(
+                hour, minute, date=datetime(year, month, day)
+            )
             clocked_time_aware = timezone.make_aware(clocked_time, timezone.utc)
         except (ValueError, TypeError):
             return Response(
                 {"run_on_date": "Invalid date."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        clocked, _ = ClockedSchedule.objects.get_or_create(clocked_time=clocked_time_aware)
+        clocked, _ = ClockedSchedule.objects.get_or_create(
+            clocked_time=clocked_time_aware
+        )
         PeriodicTask.objects.create(
             name=task_name,
             task=SCHEDULED_TASK_NAME,
@@ -212,7 +225,10 @@ def schedule_create(request):
             one_off=True,
             enabled=True,
         )
-        return Response({"detail": "Schedule created.", "schedule_type": "once"}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"detail": "Schedule created.", "schedule_type": "once"},
+            status=status.HTTP_201_CREATED,
+        )
 
     if schedule_type == "daily":
         utc_dt = _time_pacific_to_utc(hour, minute)
@@ -230,7 +246,10 @@ def schedule_create(request):
             crontab=crontab,
             enabled=True,
         )
-        return Response({"detail": "Schedule created.", "schedule_type": "daily"}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"detail": "Schedule created.", "schedule_type": "daily"},
+            status=status.HTTP_201_CREATED,
+        )
 
     if schedule_type == "weekly":
         run_on_days = data.get("run_on_days") or []
@@ -256,16 +275,26 @@ def schedule_create(request):
             crontab=crontab,
             enabled=True,
         )
-        return Response({"detail": "Schedule created.", "schedule_type": "weekly"}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"detail": "Schedule created.", "schedule_type": "weekly"},
+            status=status.HTTP_201_CREATED,
+        )
 
     if schedule_type == "custom":
         repeat_every = int(data.get("repeat_every") or 30)
         repeat_unit = (data.get("repeat_unit") or "minutes").lower()
         if repeat_every < 1:
             repeat_every = 1
-        period_map = {"seconds": IntervalSchedule.SECONDS, "minutes": IntervalSchedule.MINUTES, "hours": IntervalSchedule.HOURS, "days": IntervalSchedule.DAYS}
+        period_map = {
+            "seconds": IntervalSchedule.SECONDS,
+            "minutes": IntervalSchedule.MINUTES,
+            "hours": IntervalSchedule.HOURS,
+            "days": IntervalSchedule.DAYS,
+        }
         period = period_map.get(repeat_unit, IntervalSchedule.MINUTES)
-        interval, _ = IntervalSchedule.objects.get_or_create(every=repeat_every, period=period)
+        interval, _ = IntervalSchedule.objects.get_or_create(
+            every=repeat_every, period=period
+        )
         PeriodicTask.objects.create(
             name=task_name,
             task=SCHEDULED_TASK_NAME,
@@ -273,7 +302,10 @@ def schedule_create(request):
             interval=interval,
             enabled=True,
         )
-        return Response({"detail": "Schedule created.", "schedule_type": "custom"}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"detail": "Schedule created.", "schedule_type": "custom"},
+            status=status.HTTP_201_CREATED,
+        )
 
     return Response(
         {"schedule_type": "Must be weekly, once, daily, or custom."},
@@ -301,9 +333,13 @@ def schedule_delete(request, schedule_id):
     try:
         kwargs = json.loads(pt.kwargs) if isinstance(pt.kwargs, str) else pt.kwargs
         if kwargs.get("user_id") != str(request.user.id):
-            return Response({"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN)
+            return Response(
+                {"detail": "Not allowed."}, status=status.HTTP_403_FORBIDDEN
+            )
     except (json.JSONDecodeError, TypeError):
-        return Response({"detail": "Invalid schedule."}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"detail": "Invalid schedule."}, status=status.HTTP_400_BAD_REQUEST
+        )
 
     pt.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)

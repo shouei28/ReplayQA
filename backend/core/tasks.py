@@ -38,7 +38,9 @@ def run_scheduled_test(test_id: str, user_id: str):
     try:
         test = Test.objects.get(id=test_id, user=user)
     except Test.DoesNotExist:
-        logger.error("run_scheduled_test: test %s not found for user %s", test_id, user_id)
+        logger.error(
+            "run_scheduled_test: test %s not found for user %s", test_id, user_id
+        )
         return {"status": "error", "detail": "Test not found"}
 
     # Optional: check browser-hours limit (same as run_pipeline)
@@ -52,7 +54,9 @@ def run_scheduled_test(test_id: str, user_id: str):
             or 0
         )
         if (total_used_sec / 3600) >= user.browser_hours_limit:
-            logger.warning("run_scheduled_test: user %s over browser-hours limit", user_id)
+            logger.warning(
+                "run_scheduled_test: user %s over browser-hours limit", user_id
+            )
             return {"status": "skipped", "detail": "Browser hours limit exceeded"}
 
     execution = TestExecution.objects.create(
@@ -68,7 +72,9 @@ def run_scheduled_test(test_id: str, user_id: str):
     )
 
     run_test_execution.delay(str(execution.id))
-    logger.info("run_scheduled_test: queued execution %s for test %s", execution.id, test_id)
+    logger.info(
+        "run_scheduled_test: queued execution %s for test %s", execution.id, test_id
+    )
     return {"status": "queued", "test_execution_id": str(execution.id)}
 
 
