@@ -10,9 +10,19 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AddField(
-            model_name="testexecution",
-            name="is_scheduled",
-            field=models.BooleanField(default=False),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AddField(
+                    model_name="testexecution",
+                    name="is_scheduled",
+                    field=models.BooleanField(default=False),
+                ),
+            ],
+            database_operations=[
+                migrations.RunSQL(
+                    sql="ALTER TABLE test_execution ADD COLUMN IF NOT EXISTS is_scheduled boolean NOT NULL DEFAULT false;",
+                    reverse_sql=migrations.RunSQL.noop,
+                ),
+            ],
         ),
     ]
