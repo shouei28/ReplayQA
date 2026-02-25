@@ -1,7 +1,3 @@
-"""
-Tests for pipeline execution views (run_pipeline, get_test_status, get_test_results, get_live_view).
-"""
-
 import sys
 import uuid
 from types import ModuleType
@@ -72,37 +68,41 @@ class TestRunPipeline:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "steps" in response.data
 
-    @patch("services.runner.runner_service.execute_test", create=True)
-    def test_success_returns_201(self, mock_execute, auth_client):
+    def test_success_returns_201(self, auth_client):
         """Valid payload creates execution and returns 201."""
-        mock_execute.return_value = {"status": "completed"}
-        response = auth_client.post(
-            "/api/run-pipeline",
-            {
-                "url": "https://example.com",
-                "description": "My test desc",
-                "steps": [{"type": "goto", "url": "https://example.com"}],
-            },
-            format="json",
-        )
+        mock_mod = ModuleType("services.runner.runner_service")
+        mock_execute = MagicMock(return_value={"status": "completed"})
+        mock_mod.execute_test = mock_execute
+        with patch.dict(sys.modules, {"services.runner.runner_service": mock_mod}):
+            response = auth_client.post(
+                "/api/run-pipeline",
+                {
+                    "url": "https://example.com",
+                    "description": "My test desc",
+                    "steps": [{"type": "goto", "url": "https://example.com"}],
+                },
+                format="json",
+            )
         assert response.status_code == status.HTTP_201_CREATED
         assert "job_id" in response.data
         assert response.data["status"] == "completed"
         assert TestExecution.objects.count() == 1
 
-    @patch("services.runner.runner_service.execute_test", create=True)
-    def test_execution_failure_returns_500(self, mock_execute, auth_client):
+    def test_execution_failure_returns_500(self, auth_client):
         """When execute_test raises, returns 500 with error message."""
-        mock_execute.side_effect = Exception("Browserbase failed")
-        response = auth_client.post(
-            "/api/run-pipeline",
-            {
-                "url": "https://example.com",
-                "description": "Failing test",
-                "steps": [{"type": "goto", "url": "https://example.com"}],
-            },
-            format="json",
-        )
+        mock_mod = ModuleType("services.runner.runner_service")
+        mock_execute = MagicMock(side_effect=Exception("Browserbase failed"))
+        mock_mod.execute_test = mock_execute
+        with patch.dict(sys.modules, {"services.runner.runner_service": mock_mod}):
+            response = auth_client.post(
+                "/api/run-pipeline",
+                {
+                    "url": "https://example.com",
+                    "description": "Failing test",
+                    "steps": [{"type": "goto", "url": "https://example.com"}],
+                },
+                format="json",
+            )
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert response.data["status"] == "failed"
 
