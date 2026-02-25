@@ -26,6 +26,7 @@ def run_scheduled_test(test_id: str, user_id: str):
         user_id: UUID (str) of the User who owns the test and schedule.
     """
     from django.contrib.auth import get_user_model
+
     from core.models import Test, TestExecution
 
     User = get_user_model()
