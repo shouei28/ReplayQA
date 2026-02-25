@@ -145,6 +145,8 @@ jobs:
       - name: Check code formatting with black
         working-directory: ./backend
         run: |
+          black --version
+          black --diff . || true
           black --check .
 
       - name: Check import sorting with isort
