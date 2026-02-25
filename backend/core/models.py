@@ -118,6 +118,7 @@ class TestExecution(models.Model):
     browser = models.CharField(max_length=20, default="chrome")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     progress = models.IntegerField(default=0)  # 0-100
+    is_scheduled = models.BooleanField(default=False)
     message = models.TextField(null=True, blank=True)
     total_runtime_sec = models.FloatField(null=True, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
