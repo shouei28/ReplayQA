@@ -199,9 +199,33 @@ The dashboard sidebar provides access to all features:
 
 ## Reporting Bugs
 
-TODO: fill in this section
+Report bugs and request features using the project’s **issue tracker**:
+
+- **GitHub Issues:** [https://github.com/Jovewinston/ReplayQA/issues](https://github.com/Jovewinston/ReplayQA/issues)
+
+When opening a bug report, please include:
+
+- **What you did** — Steps to reproduce (e.g., “Went to Recorder → entered URL → clicked Start Session”).
+- **What you expected** — Expected behavior.
+- **What actually happened** — Actual behavior or error message.
+- **Environment** — OS, browser (and version), and whether you’re using the default setup (local Redis, PostgreSQL, etc.).
+- **Screenshots or logs** — If relevant (e.g., console errors, backend logs).
+
+For more on writing useful bug reports, see [How to write a good bug report](https://www.chiark.greenend.org.uk/~sgtatham/bugs.html).
+
+---
 
 ## Known Bugs & Limitations
 
-TODO: fill in this section
+Known issues and limitations are tracked in the issue tracker. Before testing, check:
+
+- **Known issues:** [https://github.com/Jovewinston/ReplayQA/issues](https://github.com/Jovewinston/ReplayQA/issues) (filter or label for “bug” or “known issue” if your project uses them).
+
+**Current limitations:**
+
+- **Scheduled tests** — Scheduling UI and backend exist; recurring execution depends on Celery Beat being running. See *Running the Software* in this guide.
+- **Recording playback** — Session replay (“View Recording”) is only available for executions that used a Browserbase session; older or failed sessions may not have recording data.
+- **Browser support** — Chrome is recommended; other modern browsers are supported but not fully tested.
+
+If you find a bug that isn’t listed, please report it using the steps in [Reporting Bugs](#reporting-bugs).
 

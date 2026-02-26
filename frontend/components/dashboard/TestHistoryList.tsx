@@ -49,32 +49,48 @@ export default function TestHistoryList({
   }
 
   function passBadge(execution: TestExecution) {
+    const scheduledBadge = execution.is_scheduled ? (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-violet-50 text-violet-700 mr-1.5">
+        Scheduled
+      </span>
+    ) : null;
     if (execution.status === "running") {
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-          running…
-        </span>
+        <>
+          {scheduledBadge}
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
+            running…
+          </span>
+        </>
       );
     }
     if (execution.status === "pending") {
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
-          pending
-        </span>
+        <>
+          {scheduledBadge}
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500">
+            pending
+          </span>
+        </>
       );
     }
     if (execution.status === "failed" && execution.error_message) {
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
-          error
-        </span>
+        <>
+          {scheduledBadge}
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+            error
+          </span>
+        </>
       );
     }
-    // completed — show pass percentage (we'll estimate from message or show 100%)
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-        completed
-      </span>
+      <>
+        {scheduledBadge}
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+          completed
+        </span>
+      </>
     );
   }
 

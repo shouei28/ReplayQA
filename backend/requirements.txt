@@ -24,6 +24,9 @@ browserbase>=1.4.0
 # Playwright (recorder connects to Browserbase via CDP)
 playwright>=1.40.0
 
+# Pillow (screenshot cropping for LLM element description)
+Pillow>=10.0.0
+
 # Stagehand (AI-powered browser automation)
 stagehand>=0.1.0
 
