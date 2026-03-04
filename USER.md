@@ -36,7 +36,7 @@ ReplayQA is a web-based QA testing platform that lets you record user interactio
 
 | Tool | Version | Purpose | Install |
 |------|---------|---------|---------|
-| Python | 3.9+ | Backend server | [python.org](https://www.python.org/downloads/) |
+| Python | 3.10+ | Backend server | [python.org](https://www.python.org/downloads/) |
 | Node.js | 18+ | Frontend server | [nodejs.org](https://nodejs.org/) |
 | PostgreSQL | 14+ | Database | [postgresql.org](https://www.postgresql.org/download/) or use [Supabase](https://supabase.com) |
 | Redis | 6+ | Task queue | macOS: `brew install redis` · Ubuntu: `sudo apt install redis-server` |
