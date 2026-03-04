@@ -117,11 +117,15 @@ If you prefer to start services individually, open **four terminal windows**:
 redis-server
 
 # Terminal 2 — Backend API server
-cd backend && source venv/bin/activate
+cd backend
+python -m venv venv
+source venv/bin/activate
 python manage.py runserver
 
 # Terminal 3 — Celery worker (required for running tests)
-cd backend && source venv/bin/activate
+cd backend
+python -m venv venv
+source venv/bin/activate
 celery -A replayqa worker --loglevel=info
 
 # Terminal 4 — Frontend
