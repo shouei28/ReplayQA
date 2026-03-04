@@ -160,3 +160,59 @@ export const executionsApi = {
   delete: (id: string) =>
     apiFetch<void>(`${id}`, { method: "DELETE" }),
 };
+
+/* ------------------------------------------------------------------ */
+/*  Schedules API (django-celery-beat)                                 */
+/* ------------------------------------------------------------------ */
+
+export interface ScheduleResponse {
+  id: string;
+  test_id: string;
+  test_name: string;
+  schedule_type: "weekly" | "once" | "daily" | "custom";
+  run_on_days: number[];
+  run_on_date: string;
+  run_at: string;
+  repeat_every: number;
+  repeat_unit: string;
+  name: string;
+  last_run_at: string | null;
+  enabled: boolean;
+}
+
+export const schedulesApi = {
+  list: () => apiFetch<ScheduleResponse[]>("schedules"),
+
+  create: (body: {
+    test_id: string;
+    schedule_type: "weekly" | "once" | "daily" | "custom";
+    run_on_days?: number[];
+    run_on_date?: string;
+    run_at?: string;
+    starts_on?: string;
+    repeat_every?: number;
+    repeat_unit?: string;
+    name?: string;
+  }) =>
+    apiFetch<{ detail: string; schedule_type: string }>("schedules", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  delete: async (id: string): Promise<void> => {
+    const url = `${getBaseUrl().replace(/\/$/, "")}/schedules/${id}`;
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+    if (res.status === 204) return;
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error((data as { detail?: string })?.detail || `Delete failed: ${res.status}`);
+    }
+  },
+};

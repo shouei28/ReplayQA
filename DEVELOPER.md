@@ -278,6 +278,7 @@ You need **four terminals** for full functionality:
 ```bash
 # Terminal 1 — Redis (if not running as a system service)
 redis-server
+# you should install redis if command not found error
 
 # Terminal 2 — Django backend
 cd backend && source venv/bin/activate

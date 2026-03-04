@@ -47,6 +47,7 @@ export interface TestExecution {
   completed_at: string | null;
   browserbase_session_id: string | null;
   error_message: string | null;
+  is_scheduled?: boolean;
   created_at: string;
   updated_at: string;
 }

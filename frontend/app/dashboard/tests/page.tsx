@@ -38,7 +38,7 @@ export default function TestsPage() {
       const data = await executionsApi.list();
       setExecutions(data.results ?? []);
     } catch {
-      setExecutions([]);
+      if (showLoading) setExecutions([]);
     } finally {
       if (showLoading) setLoadingHistory(false);
     }
@@ -77,8 +77,30 @@ export default function TestsPage() {
         title: "Test started",
         description: `Pipeline queued (${res.job_id.slice(0, 8)}…)`,
       });
-      // Refresh history to show the new pending execution
-      fetchHistory();
+      // Optimistic update: add new execution to list immediately
+      const now = new Date().toISOString();
+      const newExecution: TestExecution = {
+        id: res.job_id,
+        test_id: test.id,
+        test_name: test.test_name,
+        description: test.description,
+        url: test.url,
+        steps: test.steps,
+        expected_behavior: test.expected_behavior,
+        status: "pending",
+        progress: 0,
+        message: null,
+        total_runtime_sec: null,
+        started_at: null,
+        completed_at: null,
+        browserbase_session_id: null,
+        error_message: null,
+        created_at: now,
+        updated_at: now,
+      };
+      setExecutions((prev) => [newExecution, ...prev]);
+      // Refresh from server in background (don't await — optimistic update shows immediately)
+      void fetchHistory(false);
     } catch (err) {
       toast({
         title: "Failed to start test",

@@ -223,13 +223,19 @@ export default function TestResultsPage({
             </span>
             <h2 className="text-sm font-semibold text-gray-900">Live Browser View</h2>
           </div>
-          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <div className="relative border border-gray-200 rounded-xl overflow-hidden shadow-sm">
             <iframe
               src={liveViewUrl}
-              className="w-full bg-gray-900"
+              className="w-full bg-gray-900 pointer-events-none"
               style={{ height: "500px" }}
               allow="clipboard-read; clipboard-write"
               title="Live browser view"
+            />
+            {/* Overlay blocks interaction so viewers cannot interfere with the agent */}
+            <div
+              className="absolute inset-0 cursor-not-allowed"
+              style={{ pointerEvents: "auto" }}
+              title="View only — cannot interact while test is running"
             />
           </div>
         </div>

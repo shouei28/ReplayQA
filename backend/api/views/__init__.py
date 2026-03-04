@@ -14,6 +14,7 @@ from .pipeline import (
     run_pipeline,
 )
 from .saved_tests import saved_test_detail, saved_tests_list_create
+from .scheduler import schedule_delete, schedule_list
 from .test_history import delete_test_result, list_tests
 
 __all__ = [
@@ -31,4 +32,6 @@ __all__ = [
     "admin_management",
     "health_check",
     "get_screenshot",
+    "schedule_list",
+    "schedule_delete",
 ]
