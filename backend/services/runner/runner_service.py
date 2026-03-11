@@ -179,6 +179,10 @@ def _run_cua_loop(
 
         # Call Gemini
         try:
+            # Keep context bounded so we don't blow up request size with many screenshots.
+            # Preserve the initial user prompt, plus the most recent turns.
+            if len(contents) > 21:
+                contents = [contents[0], *contents[-20:]]
             response = client.models.generate_content(
                 model=model_name,
                 contents=contents,
@@ -268,7 +272,10 @@ def _run_cua_loop(
         contents.append(
             Content(
                 role="user",
-                parts=[Part(function_response=fr) for fr in function_responses],
+                parts=[
+                    *[Part(function_response=fr) for fr in function_responses],
+                    Part.from_bytes(data=screenshot_bytes, mime_type="image/png"),
+                ],
             )
         )
 

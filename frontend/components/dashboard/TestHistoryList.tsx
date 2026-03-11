@@ -35,10 +35,19 @@ export default function TestHistoryList({
     return `${days}d ago`;
   }
 
-  function statusIcon(status: TestExecution["status"]) {
+  function statusIcon(
+    status: TestExecution["status"],
+    resultSuccess?: boolean | null
+  ) {
     switch (status) {
       case "completed":
-        return <CheckCircle2 size={18} className="text-emerald-500" />;
+        return resultSuccess === true ? (
+          <CheckCircle2 size={18} className="text-emerald-500" />
+        ) : resultSuccess === false ? (
+          <XCircle size={18} className="text-red-500" />
+        ) : (
+          <CheckCircle2 size={18} className="text-emerald-500" />
+        );
       case "failed":
         return <XCircle size={18} className="text-red-500" />;
       case "running":
@@ -74,24 +83,39 @@ export default function TestHistoryList({
         </>
       );
     }
-    if (execution.status === "failed" && execution.error_message) {
+    if (execution.status === "failed") {
       return (
         <>
           {scheduledBadge}
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
-            error
+            {execution.error_message ? "error" : "failed"}
           </span>
         </>
       );
     }
-    return (
-      <>
-        {scheduledBadge}
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
-          completed
-        </span>
-      </>
-    );
+    if (execution.status === "completed") {
+      const passed = execution.result_success === true;
+      const failed = execution.result_success === false;
+      return (
+        <>
+          {scheduledBadge}
+          {passed ? (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+              passed
+            </span>
+          ) : failed ? (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+              failed
+            </span>
+          ) : (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700">
+              completed
+            </span>
+          )}
+        </>
+      );
+    }
+    return null;
   }
 
   function formatRuntime(sec: number | null) {
@@ -140,7 +164,7 @@ export default function TestHistoryList({
             className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50/60 transition-colors group"
           >
             {/* Status icon */}
-            {statusIcon(exec.status)}
+            {statusIcon(exec.status, exec.result_success)}
 
             {/* Name / description */}
             <div className="flex-1 min-w-0">

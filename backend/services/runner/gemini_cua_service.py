@@ -185,14 +185,6 @@ def get_function_responses(page, results):
             types.FunctionResponse(
                 name=name,
                 response=response_data,
-                parts=[
-                    types.FunctionResponsePart(
-                        inline_data=types.FunctionResponseBlob(
-                            mime_type="image/png",
-                            data=screenshot_bytes,
-                        )
-                    )
-                ],
             )
         )
 
