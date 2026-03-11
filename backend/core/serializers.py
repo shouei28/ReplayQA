@@ -48,6 +48,8 @@ class TestSerializer(serializers.ModelSerializer):
 class TestExecutionSerializer(serializers.ModelSerializer):
     """Serializer for TestExecution model"""
 
+    result_success = serializers.SerializerMethodField()
+
     class Meta:
         model = TestExecution
         fields = [
@@ -67,6 +69,7 @@ class TestExecutionSerializer(serializers.ModelSerializer):
             "completed_at",
             "error_message",
             "is_scheduled",
+            "result_success",
             "created_at",
             "updated_at",
         ]
@@ -84,6 +87,12 @@ class TestExecutionSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+    def get_result_success(self, obj):
+        try:
+            return obj.result.success
+        except TestResult.DoesNotExist:
+            return None
 
 
 class TestResultSerializer(serializers.ModelSerializer):

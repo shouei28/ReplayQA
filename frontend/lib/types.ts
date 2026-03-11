@@ -48,6 +48,8 @@ export interface TestExecution {
   browserbase_session_id: string | null;
   error_message: string | null;
   is_scheduled?: boolean;
+  /** For completed executions: whether the test passed (true) or failed (false). Null when no result. */
+  result_success?: boolean | null;
   created_at: string;
   updated_at: string;
 }
