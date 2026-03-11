@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,6 +19,7 @@ import {
   Trash2,
   Monitor,
   Square,
+  GripVertical,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,10 @@ export function Recorder() {
   const [browserbaseSessionId, setBrowserbaseSessionId] = useState<string | null>(null);
   const [liveViewUrl, setLiveViewUrl] = useState<string | null>(null);
   const [steps, setSteps] = useState<RecordedStep[]>([]);
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const [dropBeforeIndex, setDropBeforeIndex] = useState<number | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const editingInputRef = useRef<HTMLInputElement>(null);
   const [device] = useState("desktop");
   const [browser] = useState("chrome");
   const [recording, setRecording] = useState(false);
@@ -90,6 +95,13 @@ export function Recorder() {
       prevStepsLengthRef.current = steps.length;
     }
   }, [steps.length]);
+
+  useEffect(() => {
+    if (editingStepId && editingInputRef.current) {
+      editingInputRef.current.focus();
+      editingInputRef.current.select();
+    }
+  }, [editingStepId]);
 
   useEffect(() => {
     return () => {
@@ -320,6 +332,65 @@ export function Recorder() {
 
   const removeStep = (id: string) => {
     setSteps((prev) => prev.filter((s) => s.id !== id));
+    if (editingStepId === id) setEditingStepId(null);
+  };
+
+  const moveStep = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return;
+    setSteps((prev) => {
+      const next = [...prev];
+      const [removed] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, removed);
+      return next;
+    });
+  };
+
+  const updateStepInstruction = (id: string, instruction: string) => {
+    setSteps((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, instruction } : s))
+    );
+  };
+
+  const handleDragStart = (e: React.DragEvent, stepId: string) => {
+    setDraggedId(stepId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", stepId);
+    e.dataTransfer.setData("application/json", JSON.stringify({ stepId }));
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDropBeforeIndex(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent, stepIndex: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (!draggedId) return;
+    const fromIndex = steps.findIndex((s) => s.id === draggedId);
+    if (fromIndex === -1) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    const insertBefore = e.clientY < mid ? stepIndex : stepIndex + 1;
+    if (insertBefore === fromIndex || insertBefore === fromIndex + 1) return;
+    setDropBeforeIndex(insertBefore);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDropBeforeIndex(null);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const insertAt = dropBeforeIndex;
+    setDropBeforeIndex(null);
+    const stepId = e.dataTransfer.getData("text/plain");
+    if (!stepId || insertAt == null) return;
+    const fromIndex = steps.findIndex((s) => s.id === stepId);
+    if (fromIndex === -1) return;
+    const toIndex = insertAt > fromIndex ? insertAt - 1 : insertAt;
+    if (fromIndex === toIndex) return;
+    moveStep(fromIndex, toIndex);
   };
 
   /** Build payload for save-test: goto + act steps. */
@@ -380,6 +451,7 @@ export function Recorder() {
   };
 
   const openEndModal = async () => {
+    setEditingStepId(null);
     await endSessionOnly();
     setSaveName("");
     setSaveExpectedBehavior("");
@@ -580,41 +652,120 @@ export function Recorder() {
           </div>
           <div
             ref={stepsListRef}
-            className="flex-1 space-y-3 overflow-y-auto p-4"
+            className="flex-1 overflow-y-auto p-4"
+            onDragLeave={handleDragLeave}
           >
             {steps.length === 0 ? (
               <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50/50 py-10 text-center text-sm text-zinc-500">
                 No steps yet. Start recording and interact in the browser.
               </div>
             ) : (
-              steps.map((step, i) => (
-                <div
-                  key={step.id}
-                  className="group flex gap-2 rounded-lg border border-zinc-200 bg-zinc-50/50 p-3"
-                >
-                  <span className="shrink-0 text-xs font-medium text-zinc-400">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm text-zinc-800">{step.instruction}</p>
-                    {step.selector && (
-                      <p className="mt-1 truncate font-mono text-xs text-zinc-500">
-                        {step.selector}
-                      </p>
+              <div className="space-y-3">
+                {steps.map((step, i) => (
+                  <Fragment key={step.id}>
+                    {dropBeforeIndex === i && (
+                      <div
+                        className="flex min-h-[6px] items-center py-1"
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          if (draggedId) setDropBeforeIndex(i);
+                        }}
+                        onDrop={handleDrop}
+                      >
+                        <div className="h-0.5 w-full rounded-full bg-teal-500 shadow-[0_0_6px_rgba(20,184,166,0.4)] transition-opacity duration-200 ease-out" />
+                      </div>
                     )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 opacity-70 hover:opacity-100"
-                    onClick={() => removeStep(step.id)}
-                    aria-label="Remove step"
+                    <div
+                      draggable={editingStepId !== step.id}
+                      onDragStart={(e) => handleDragStart(e, step.id)}
+                      onDragEnd={handleDragEnd}
+                      onDragOver={(e) => handleDragOver(e, i)}
+                      onDrop={handleDrop}
+                      className={cn(
+                        "group flex gap-2 rounded-lg border bg-zinc-50/50 p-3 transition-all duration-200 ease-out",
+                        draggedId === step.id
+                          ? "scale-[0.98] border-teal-300 bg-teal-50/50 opacity-80 shadow-md"
+                          : "border-zinc-200 hover:border-zinc-300"
+                      )}
+                    >
+                      <div
+                        className="shrink-0 cursor-grab active:cursor-grabbing touch-none pt-0.5 text-zinc-400 hover:text-zinc-600"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        aria-hidden
+                      >
+                        <GripVertical className="h-4 w-4" />
+                      </div>
+                      <span className="shrink-0 text-xs font-medium text-zinc-400 tabular-nums">
+                        {i + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        {editingStepId === step.id ? (
+                          <Input
+                            ref={editingInputRef}
+                            value={step.instruction}
+                            onChange={(e) =>
+                              updateStepInstruction(step.id, e.target.value)
+                            }
+                            onBlur={() => setEditingStepId(null)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.currentTarget.blur();
+                                setEditingStepId(null);
+                              }
+                              if (e.key === "Escape") {
+                                setEditingStepId(null);
+                                e.currentTarget.blur();
+                              }
+                            }}
+                            className="h-8 border-zinc-300 bg-white text-sm text-zinc-900"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <p
+                            onDoubleClick={(e) => {
+                              e.preventDefault();
+                              setEditingStepId(step.id);
+                            }}
+                            className="cursor-text select-text rounded px-1 py-0.5 text-sm text-zinc-800 hover:bg-zinc-100/80"
+                            title="Double-click to edit"
+                          >
+                            {step.instruction || "No description"}
+                          </p>
+                        )}
+                        {step.selector && !editingStepId && (
+                          <p className="mt-1 truncate font-mono text-xs text-zinc-500">
+                            {step.selector}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 opacity-70 hover:opacity-100"
+                        onClick={() => removeStep(step.id)}
+                        aria-label="Remove step"
+                      >
+                        <Trash2 className="h-4 w-4 text-zinc-500" />
+                      </Button>
+                    </div>
+                  </Fragment>
+                ))}
+                {dropBeforeIndex === steps.length && (
+                  <div
+                    className="flex min-h-[6px] items-center py-1"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (draggedId) setDropBeforeIndex(steps.length);
+                    }}
+                    onDrop={handleDrop}
                   >
-                    <Trash2 className="h-4 w-4 text-zinc-500" />
-                  </Button>
-                </div>
-              ))
+                    <div className="h-0.5 w-full rounded-full bg-teal-500 shadow-[0_0_6px_rgba(20,184,166,0.4)] transition-opacity duration-200 ease-out" />
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
