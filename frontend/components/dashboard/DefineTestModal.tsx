@@ -23,6 +23,7 @@ interface DefineTestModalProps {
 export default function DefineTestModal({ open, onClose, onCreate }: DefineTestModalProps) {
   const [testName, setTestName] = useState("");
   const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
   const [stepsText, setStepsText] = useState("");
   const [expectedBehavior, setExpectedBehavior] = useState("");
   const [saving, setSaving] = useState(false);
@@ -31,6 +32,7 @@ export default function DefineTestModal({ open, onClose, onCreate }: DefineTestM
   function reset() {
     setTestName("");
     setUrl("");
+    setDescription("");
     setStepsText("");
     setExpectedBehavior("");
     setError(null);
@@ -51,7 +53,7 @@ export default function DefineTestModal({ open, onClose, onCreate }: DefineTestM
         test_name: testName.trim(),
         url: url.trim(),
         steps,
-        description: "",
+        description: description.trim(),
         expected_behavior: expectedBehavior.trim(),
       });
       reset();
@@ -93,6 +95,19 @@ export default function DefineTestModal({ open, onClose, onCreate }: DefineTestM
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder="https://..."
+              className="border-gray-300"
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <label className="text-sm font-medium text-gray-700">
+              Description{" "}
+              <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="e.g. Verifies the login flow works end-to-end"
               className="border-gray-300"
             />
           </div>
