@@ -227,6 +227,7 @@ pip install -r requirements.txt
 cp .env.example .env            # Then edit .env with your credentials
 # Required keys: DATABASE_URL, SECRET_KEY, BROWSERBASE_API_KEY,
 #                BROWSERBASE_PROJECT_ID, GEMINI_API_KEY
+# Important:     CORS_ALLOWED_ORIGINS must include your frontend URL
 
 # Apply database migrations
 python manage.py migrate
@@ -692,3 +693,17 @@ Free plan browser minutes limit reached.
 ```
 **Solution:**
 - The Browserbase free tier has a monthly limit on browser minutes. Upgrade your plan at https://browserbase.com/plans or wait for the limit to reset.
+
+### CORS errors (frontend cannot reach backend)
+```
+Access to XMLHttpRequest at 'http://localhost:8000/api/...' from origin
+'http://localhost:3000' has been blocked by CORS policy.
+```
+**Solution:**
+- Set `CORS_ALLOWED_ORIGINS` in your `backend/.env` file to include every origin the frontend runs on (comma-separated, no trailing slash):
+  ```
+  CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+  ```
+- If the frontend runs on a different port or domain (e.g., a deployed URL), add that origin to the list.
+- Restart the Django dev server after changing `.env`.
+- The default value (used when the variable is unset) is `http://localhost:3000,http://127.0.0.1:3000`.
