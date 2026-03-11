@@ -20,3 +20,9 @@ ReplayQA is a web-based QA testing platform that lets you record user interactio
   - **Live browser view.** Watch the AI agent execute your tests in real time via a live browser stream.
   - **Automatic pass/fail evaluation.** An AI evaluator analyzes screenshots and determines whether each step passed, producing a clear results report.
   - **No coding required.** Create, run, and manage tests entirely from the dashboard UI.
+
+## Tag
+todo
+
+## Using GenAI
+While we leveraged Claude AI and Cursor to assist with creating test cases and writing mundane code, all of the high-level architectural designs/pipelines were planned and conceived entirely by the team. To ensure high code quality, we used GitHub Copilot as an assistant during our code review to provide more constructive technical feedback.
