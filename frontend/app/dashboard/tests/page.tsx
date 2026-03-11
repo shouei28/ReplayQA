@@ -168,36 +168,9 @@ export default function TestsPage() {
     toast({ title: "Test created" });
   }
 
-  /* ---- Tabs ---------------------------------------------------------- */
-
-  const [tab, setTab] = useState<"tests" | "scheduled">("tests");
-
   return (
     <div className="max-w-6xl">
-      {/* Tab bar */}
-      <div className="flex items-center gap-1 mb-6 border-b border-gray-200">
-        <button
-          onClick={() => setTab("tests")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === "tests"
-              ? "border-gray-900 text-gray-900"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-        >
-          Tests
-        </button>
-        <button
-          onClick={() => setTab("scheduled")}
-          className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === "scheduled"
-              ? "border-gray-900 text-gray-900"
-              : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
-        >
-          Scheduled
-        </button>
-      </div>
-
-      {tab === "tests" && (
-        <>
+      <>
           <TestList
             tests={tests}
             loading={loadingTests}
@@ -230,16 +203,6 @@ export default function TestsPage() {
             onDelete={handleDeleteExecution}
           />
         </>
-      )}
-
-      {tab === "scheduled" && (
-        <div className="text-center py-16 text-gray-400">
-          <p className="text-lg">Scheduled tests coming soon</p>
-          <p className="text-sm mt-1">
-            Set up recurring test runs on a schedule.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
