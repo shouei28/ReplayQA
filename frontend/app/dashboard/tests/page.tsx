@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import TestList from "@/components/dashboard/TestList";
 import TestHistoryList from "@/components/dashboard/TestHistoryList";
 import TestDetailModal from "@/components/dashboard/TestDetailModal";
-import DefineTestModal from "@/components/dashboard/DefineTestModal";
 import { testsApi, pipelineApi, executionsApi } from "@/lib/api";
 import type { Test, TestExecution } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
@@ -16,7 +15,6 @@ export default function TestsPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [selectedTest, setSelectedTest] = useState<Test | null>(null);
   const [detailModalOpen, setDetailModalOpen] = useState(false);
-  const [defineModalOpen, setDefineModalOpen] = useState(false);
   const { toast } = useToast();
 
   /* ---- Fetch data ---------------------------------------------------- */
@@ -162,12 +160,6 @@ export default function TestsPage() {
     toast({ title: "Test updated" });
   }
 
-  async function handleCreateTest(data: Omit<Test, "id" | "created_at" | "updated_at">) {
-    const created = await testsApi.create(data);
-    setTests((prev) => [created, ...prev]);
-    toast({ title: "Test created" });
-  }
-
   /* ---- Tabs ---------------------------------------------------------- */
 
   const [tab, setTab] = useState<"tests" | "scheduled">("tests");
@@ -205,13 +197,6 @@ export default function TestsPage() {
             onDelete={handleDelete}
             onRunSelected={handleRunSelected}
             onTestClick={handleTestClick}
-            onDefineNew={() => setDefineModalOpen(true)}
-          />
-
-          <DefineTestModal
-            open={defineModalOpen}
-            onClose={() => setDefineModalOpen(false)}
-            onCreate={handleCreateTest}
           />
 
           <TestDetailModal
