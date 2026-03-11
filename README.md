@@ -33,18 +33,6 @@ ReplayQA is a web-based QA testing platform that lets you record user interactio
 - The results page shows the overall status, a per-step breakdown (e.g., 8/10 passed), runtime, and the full execution log.
 - You can browse step screenshots or replay the full browser session recording.
 
-### Test Management
-- Create, edit, and delete saved tests from the Tests page.
-- Run a single test or select multiple to run in batch.
-- View execution history with status, timestamps, and links to results.
-
-### Scheduled Tests
-- Schedule tests to run on a daily, weekly, or custom recurring basis using Celery Beat.
-- View upcoming runs in a calendar.
-
-### Dashboard Overview
-- The overview page shows recent test activity, pass/fail counts, and shortcuts to start recording or run a test.
-
 ## Tag
 todo
 
